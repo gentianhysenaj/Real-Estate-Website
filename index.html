@@ -5,102 +5,151 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Gentian | Real Estate in the Greater Toronto Area</title>
 <meta name="description" content="Gentian is a Greater Toronto Area real estate agent helping buyers and sellers move with confidence. Search every home on the MLS®.">
+<meta name="theme-color" content="#0e0e0d">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/assets/styles.css">
 <style>
-.hero{display:grid;grid-template-columns:1.15fr 1fr;gap:56px;align-items:center;padding-block:64px}
-.hero .copy{display:grid;gap:22px;min-width:0}
-.hero .copy p:not(.eyebrow){font-size:17px;color:var(--muted);max-width:52ch}
-.hero .actions{display:flex;gap:12px;flex-wrap:wrap}
-.portrait{aspect-ratio:4/5;border-radius:var(--r);background:linear-gradient(160deg,var(--accent-soft),var(--line));display:grid;place-items:center;color:var(--muted);font-size:13px;border:1px solid var(--line);overflow:hidden}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px}
-.stats div{border-top:2px solid var(--accent);padding-top:10px}
-.stats strong{display:block;font:600 24px/1.2 var(--display);font-variant-numeric:tabular-nums}
-.stats span{font-size:13px;color:var(--muted)}
-.about{display:grid;grid-template-columns:1fr 1.4fr;gap:48px}
-.about .body{display:grid;gap:16px;color:var(--muted);max-width:62ch}
-.services{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:28px}
-.services .card{gap:10px}
-.services p{color:var(--muted);font-size:14.5px}
-.quotes{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:28px}
-blockquote{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px;display:grid;gap:12px}
-blockquote p{font-size:16px}
-blockquote cite{font-style:normal;font-size:13px;color:var(--muted)}
-.contact{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
-.contact .lines{display:grid;gap:10px;margin-top:18px}
-.contact .lines a{font-weight:500;text-decoration:none}
-.sent{background:var(--accent-soft);border-radius:8px;padding:12px 14px;font-size:14px}
+/* Full-bleed photo hero. PLACEHOLDER photo: swap the url() for your own shot, e.g. /assets/hero.jpg */
+.hero{position:relative;min-height:100svh;display:flex;align-items:flex-end;color:#f3efe8;
+  background:#1a1916 url("https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=2400&q=75") center/cover no-repeat}
+.hero::before{content:"";position:absolute;inset:0;background:
+  linear-gradient(180deg,rgba(10,10,9,.55) 0%,rgba(10,10,9,.05) 28%,rgba(10,10,9,.15) 55%,rgba(10,10,9,.85) 100%),
+  linear-gradient(90deg,rgba(10,10,9,.55) 0%,rgba(10,10,9,0) 60%)}
+.hero .inner{position:relative;width:100%;max-width:1280px;margin:0 auto;padding:0 var(--gutter) clamp(40px,8vh,96px);display:grid;gap:22px}
+.hero .eyebrow{color:#f3efe8;opacity:.85}
+.hero .tag{font:400 12px/1.6 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.hero .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.hero .btn{background:#f3efe8;color:#111;border-color:#f3efe8}
+.hero .btn:hover{background:transparent;color:#f3efe8}
+.hero .btn.ghost{background:transparent;color:#f3efe8;border-color:rgba(243,239,232,.5)}
+.hero .scroll{position:absolute;right:var(--gutter);bottom:clamp(40px,8vh,96px);font:400 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+.stats div{padding:32px 0;display:grid;gap:6px}
+.stats div+div{border-left:1px solid var(--line);padding-left:clamp(16px,3vw,40px)}
+.stats strong{font:300 clamp(36px,5vw,64px)/1 var(--display);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.stats span{font:400 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+.about{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:clamp(28px,5vw,80px);align-items:start}
+.portrait{aspect-ratio:4/5;background:var(--surface) url("https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=70") center/cover;position:relative}
+.portrait span{position:absolute;left:16px;bottom:14px;font:400 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#f3efe8;background:rgba(0,0,0,.45);padding:6px 8px}
+.about .body{display:grid;gap:18px;color:var(--muted);font-size:16.5px;max-width:58ch}
+.about .body p:first-child{color:var(--ink);font-size:clamp(19px,2vw,24px);line-height:1.45}
+
+.services{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+.services article{padding:36px clamp(16px,2.5vw,36px) 40px 0;display:grid;gap:14px;align-content:start}
+.services article+article{border-left:1px solid var(--line);padding-left:clamp(16px,2.5vw,36px)}
+.services p{color:var(--muted)}
+
+.banner{position:relative;min-height:70svh;display:flex;align-items:center;justify-content:center;text-align:center;color:#f3efe8;
+  background:#1a1916 url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2400&q=75") center/cover fixed}
+.banner::before{content:"";position:absolute;inset:0;background:rgba(10,10,9,.55)}
+.banner .inner{position:relative;display:grid;gap:26px;justify-items:center;padding:0 var(--gutter)}
+.banner .btn{background:#f3efe8;color:#111;border-color:#f3efe8}
+.banner .btn:hover{background:transparent;color:#f3efe8}
+
+.quotes{display:grid;grid-template-columns:repeat(2,1fr);gap:clamp(24px,4vw,64px)}
+blockquote{margin:0;display:grid;gap:18px;border-top:1px solid var(--line);padding-top:28px}
+blockquote p{font:300 clamp(20px,2.2vw,28px)/1.35 var(--display);letter-spacing:-.015em}
+blockquote cite{font:400 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-style:normal}
+
+.contact{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,5vw,80px);align-items:start}
+.contact .lines{display:grid;gap:12px;margin-top:32px;font:400 13px/1.4 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.contact .lines a{text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:12px}
+.contact .lines a:hover{border-color:var(--ink)}
+
 @media (max-width:860px){
-  .hero,.about,.contact{grid-template-columns:1fr;gap:28px}
-  .hero{padding-block:36px}
-  .portrait{max-width:420px;aspect-ratio:1/1}
+  .about,.contact{grid-template-columns:1fr}
+  .portrait{max-width:440px}
   .services,.quotes{grid-template-columns:1fr}
-  section.block{padding-block:44px}
+  .services article+article{border-left:0;padding-left:0;border-top:1px solid var(--line)}
+  .hero .scroll{display:none}
+  .banner{background-attachment:scroll}
+}
+@media (max-width:520px){
+  .stats{grid-template-columns:1fr}
+  .stats div+div{border-left:0;padding-left:0;border-top:1px solid var(--line)}
 }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <a class="brand" href="/">Gentian<small>Real Estate · Greater Toronto Area</small></a>
+<section class="hero">
+  <header class="top over">
+    <a class="brand" href="/">Gentian</a>
     <nav class="main" aria-label="Main">
       <a href="#about">About</a>
       <a href="#services">Services</a>
+      <a href="/search/">Search</a>
       <a href="#contact">Contact</a>
-      <a class="cta" href="/search/">Search homes</a>
     </nav>
+    <div class="side">Residential<br>Real Estate</div>
   </header>
-
-  <section class="hero">
-    <div class="copy">
-      <p class="eyebrow">Your GTA real estate agent</p>
-      <h1>Find the right home, with someone in your corner.</h1>
-      <p>I'm Gentian. I help buyers and sellers across the Greater Toronto Area make one of the biggest decisions of their lives with clear advice, honest numbers and a lot of local knowledge.</p>
-      <div class="actions">
-        <a class="btn" href="/search/">Search every home on the MLS®</a>
-        <a class="btn ghost" href="#contact">Book a call</a>
-      </div>
-      <div class="stats" aria-label="At a glance">
-        <!-- PLACEHOLDER: replace with real numbers -->
-        <div><strong>00+</strong><span>Homes sold</span></div>
-        <div><strong>00 yrs</strong><span>In GTA real estate</span></div>
-        <div><strong>5.0★</strong><span>Client rating</span></div>
-      </div>
+  <div class="inner">
+    <p class="eyebrow"><b>01</b> / Home</p>
+    <h1>Find your<br>place.</h1>
+    <p class="tag">Greater Toronto Area real estate.</p>
+    <div class="actions">
+      <a class="btn" href="/search/">Search every home</a>
+      <a class="btn ghost" href="#contact">Book a call</a>
     </div>
-    <!-- PLACEHOLDER: replace with <img src="/assets/gentian.jpg" alt="Gentian"> -->
-    <div class="portrait" role="img" aria-label="Photo of Gentian coming soon">Your photo here</div>
-  </section>
+  </div>
+  <span class="scroll" aria-hidden="true">Scroll ↓</span>
+</section>
 
-  <section class="block" id="about">
+<div class="wrap">
+  <section class="block" id="about" style="border-top:0">
+    <div class="sec-head">
+      <p class="eyebrow"><b>02</b> / About</p>
+      <h2>Local. Direct.<br>On your side.</h2>
+    </div>
     <div class="about">
-      <div>
-        <p class="eyebrow">About me</p>
-        <h2 style="margin-top:10px">Local, straightforward and on your side.</h2>
-      </div>
+      <!-- PLACEHOLDER: replace the photo in .portrait with Gentian's headshot -->
+      <div class="portrait" role="img" aria-label="Photo of Gentian coming soon"><span>Your photo here</span></div>
       <div class="body">
         <!-- PLACEHOLDER bio: replace with Gentian's own words -->
-        <p>Buying or selling a home in the GTA moves fast. My job is to slow it down just enough for you to make a confident decision. I'll walk you through the market, the neighbourhoods and the numbers, and I'll tell you what I'd do if I were in your shoes.</p>
-        <p>Whether it's your first condo, a move up for a growing family or selling the house you've loved for years, you'll get the same thing from me: quick answers, careful negotiation and no pressure.</p>
+        <p>I'm Gentian. I help buyers and sellers across the Greater Toronto Area make one of the biggest decisions of their lives with clear advice, honest numbers and a lot of local knowledge.</p>
+        <p>Buying or selling a home in the GTA moves fast. My job is to slow it down just enough for you to make a confident decision. I'll walk you through the market, the neighbourhoods and the numbers, and I'll tell you what I'd do in your shoes.</p>
+        <p>Whether it's your first condo, a move up for a growing family or selling the house you've loved for years, you'll get quick answers, careful negotiation and no pressure.</p>
         <p class="fine">Brokerage name · Registered real estate salesperson</p>
+        <!-- PLACEHOLDER: replace with real numbers -->
+        <div class="stats" aria-label="At a glance">
+          <div><strong>00+</strong><span>Homes sold</span></div>
+          <div><strong>00</strong><span>Years in GTA</span></div>
+          <div><strong>5.0</strong><span>Client rating</span></div>
+        </div>
       </div>
     </div>
   </section>
 
   <section class="block" id="services">
-    <p class="eyebrow">How I can help</p>
-    <h2 style="margin-top:10px">Buying, selling, or just exploring.</h2>
+    <div class="sec-head">
+      <p class="eyebrow"><b>03</b> / Services</p>
+      <h2>Buying, selling,<br>or exploring.</h2>
+    </div>
     <div class="services">
-      <div class="card"><h3>Buying</h3><p>A clear plan for your budget, early access to new listings, honest opinions at every showing and a strong offer strategy.</p></div>
-      <div class="card"><h3>Selling</h3><p>Pricing backed by real comparables, staging and photography advice, and marketing that gets your home in front of the right buyers.</p></div>
-      <div class="card"><h3>First-time buyers</h3><p>Every step explained in plain language, from mortgage pre-approval and land transfer tax to closing day.</p></div>
+      <article><p class="eyebrow">3.1</p><h3>Buying</h3><p>A clear plan for your budget, early access to new listings, honest opinions at every showing and a strong offer strategy.</p></article>
+      <article><p class="eyebrow">3.2</p><h3>Selling</h3><p>Pricing backed by real comparables, staging and photography advice, and marketing that puts your home in front of the right buyers.</p></article>
+      <article><p class="eyebrow">3.3</p><h3>First-time buyers</h3><p>Every step explained in plain language, from mortgage pre-approval and land transfer tax to closing day.</p></article>
     </div>
   </section>
+</div>
 
-  <section class="block">
-    <p class="eyebrow">Client stories</p>
-    <h2 style="margin-top:10px">What clients say.</h2>
+<section class="banner">
+  <div class="inner">
+    <p class="eyebrow" style="color:#f3efe8"><b style="color:#f3efe8">04</b> / Search</p>
+    <h2>Every home.<br>The moment it lists.</h2>
+    <a class="btn" href="/search/">Start your search</a>
+  </div>
+</section>
+
+<div class="wrap">
+  <section class="block" style="border-top:0">
+    <div class="sec-head">
+      <p class="eyebrow"><b>05</b> / Clients</p>
+      <h2>In their words.</h2>
+    </div>
     <!-- PLACEHOLDER: replace with real client reviews (with their permission) -->
     <div class="quotes">
       <blockquote><p>"Client review goes here. A sentence or two about what it was like to work with Gentian."</p><cite>Client name · Neighbourhood</cite></blockquote>
@@ -108,16 +157,16 @@ blockquote cite{font-style:normal;font-size:13px;color:var(--muted)}
     </div>
   </section>
 
-  <section class="block" id="contact" style="border-bottom:0">
+  <section class="block" id="contact">
     <div class="contact">
       <div>
-        <p class="eyebrow">Get in touch</p>
-        <h2 style="margin-top:10px">Let's talk about your next move.</h2>
+        <p class="eyebrow"><b>06</b> / Contact</p>
+        <h2 style="margin-top:20px">Let's talk.</h2>
         <!-- PLACEHOLDER contact details -->
         <div class="lines">
           <a href="tel:+10000000000">(000) 000-0000</a>
           <a href="mailto:hello@example.com">hello@example.com</a>
-          <span class="muted">Serving Toronto and the Greater Toronto Area</span>
+          <span class="muted">Toronto &amp; the Greater Toronto Area</span>
         </div>
       </div>
       <!-- Netlify Forms: submissions appear in the Netlify dashboard under Forms -->
