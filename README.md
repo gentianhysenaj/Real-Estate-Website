@@ -15,3 +15,7 @@ The contact form and the home-search sign-up use **Netlify Forms**. Submissions 
 - Photo, bio, stats, reviews, phone and email in `index.html` (search for `PLACEHOLDER`)
 - Slide content in `presentations/index.html` (`DECKS`)
 - PIN: `PIN_HASH` in `presentations/index.html` (SHA-256 of the PIN)
+
+## Home page scroll tour
+`assets/journey.js` drives the home page: scrolling walks through a home (exterior → front door → rooms → backyard at sunset).
+Swap the photos in `TOUR.shots`, or set `TOUR.video` to a walk-through clip to scrub through it on scroll.

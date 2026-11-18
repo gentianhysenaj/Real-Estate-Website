@@ -5,29 +5,19 @@ header.top.fixed{position:fixed;inset:0 0 auto 0;z-index:20;border:0;padding-inl
 header.top.fixed a{color:var(--light)}
 
 .journey{position:relative;height:1300vh}
-.stage{position:sticky;top:0;height:100vh;height:100lvh;overflow:hidden;background:#87c3ef}
-.sky{position:absolute;inset:0;background:linear-gradient(180deg,var(--s1,#2f8fdc) 0%,var(--s2,#79bdf0) 55%,var(--s3,#d7eefc) 100%)}
-.scene{position:absolute;inset:0;width:100%;height:100%;will-change:opacity}
-#int,#yard{opacity:0}
+.stage{position:sticky;top:0;height:100vh;height:100lvh;overflow:hidden;background:#141311}
+.shots,.shots img,.tour-video{position:absolute;inset:0;width:100%;height:100%}
+.shots img{object-fit:cover;opacity:0;will-change:transform,opacity;backface-visibility:hidden}
+.shots img:first-child{opacity:1}
+.shots img.broken{visibility:hidden!important}
+.tour-video{object-fit:cover}
+/* warm "golden hour" grade that builds as the day goes on */
+.grade{position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:soft-light;
+  background:linear-gradient(180deg,#ff9a4d 0%,#ff7a3d 45%,#5b2a6b 100%)}
 .flash{position:absolute;inset:0;background:#fff4dc;opacity:0;pointer-events:none}
-.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,0,.35) 100%)}
-
-#int .v-hill{fill:var(--hill,#93b99c)}
-#int .v-tree{fill:var(--tree,#5d8b55)}
-#int .v-pool{fill:var(--pool,#5fb4d6)}
-
-@media (prefers-reduced-motion:no-preference){
-  .cloud{animation:drift 60s linear infinite alternate}
-  .cloud.c2{animation-duration:80s}
-  .cloud.c3{animation-duration:70s;animation-direction:alternate-reverse}
-  .flame{animation:flick .6s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:50% 100%}
-  .flame.f2{animation-duration:.45s}
-  .shimmer line{animation:shim 3.5s ease-in-out infinite alternate}
-  .shimmer line:nth-child(2n){animation-delay:-1.7s}
-}
-@keyframes drift{to{transform:translateX(120px)}}
-@keyframes flick{from{transform:scaleY(.9) scaleX(1.03)}to{transform:scaleY(1.08) scaleX(.96)}}
-@keyframes shim{from{opacity:.15;transform:translateX(-14px)}to{opacity:.7;transform:translateX(14px)}}
+.vignette{position:absolute;inset:0;pointer-events:none;background:
+  linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 70%,rgba(0,0,0,.35) 100%),
+  radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,0,.35) 100%)}
 
 /* HUD */
 .rooms{position:fixed;right:var(--gutter);top:50%;transform:translateY(-50%);z-index:15;list-style:none;margin:0;padding:0;display:grid;gap:12px;
