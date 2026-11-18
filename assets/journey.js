@@ -130,10 +130,12 @@ const TOUR = {
   // screens the 4K versions are fetched afterwards and decoded just ahead of the camera.
   const useShots = !useFrames && !useVideo && TOUR.shots.length > 0;
   if (useShots) canvas.hidden = false;
+  const V = "?v=2";                                           // bump when photos change under the same name
   let want2x = false, loLeft = TOUR.shots.length;
   const toBitmap = async src => {
-    const img = new Image(); img.decoding = "async"; img.src = src;
+    const img = new Image(); img.decoding = "async";
     if (src === TOUR.shots[0].src) img.fetchPriority = "high";
+    img.src = src + V;
     await img.decode();
     return window.createImageBitmap ? createImageBitmap(img) : img;
   };
@@ -151,7 +153,7 @@ const TOUR = {
   });
   function fetchHi(){
     if (!want2x || loLeft > 0) return;                        // the 1920 set always comes first
-    shots.forEach(s => { if (!s.hiBlob) fetch(s.src.replace(/\.webp$/, "@2x.webp")).then(r => r.ok ? r.blob() : null)
+    shots.forEach(s => { if (!s.hiBlob) fetch(s.src.replace(/\.webp$/, "@2x.webp") + V).then(r => r.ok ? r.blob() : null)
       .then(b => { s.hiBlob = b; sharpen(shown); }).catch(() => {}); });
   }
   // keep the 4K version decoded only for the rooms near the camera, to stay light on phones

@@ -11,7 +11,8 @@
 [[headers]]
   for = "/assets/*"
   [headers.values]
-    Cache-Control = "public, max-age=604800"
+    # always check for a newer file (cheap: Netlify answers with ETags), so updates show up straight away
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/presentations/*"
