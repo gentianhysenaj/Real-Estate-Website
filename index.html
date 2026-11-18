@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gentian | Real Estate in the Greater Toronto Area</title>
+<meta name="description" content="Gentian is a Greater Toronto Area real estate agent helping buyers and sellers move with confidence. Search every home on the MLS®.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/assets/styles.css">
+<style>
+.hero{display:grid;grid-template-columns:1.15fr 1fr;gap:56px;align-items:center;padding-block:64px}
+.hero .copy{display:grid;gap:22px;min-width:0}
+.hero .copy p:not(.eyebrow){font-size:17px;color:var(--muted);max-width:52ch}
+.hero .actions{display:flex;gap:12px;flex-wrap:wrap}
+.portrait{aspect-ratio:4/5;border-radius:var(--r);background:linear-gradient(160deg,var(--accent-soft),var(--line));display:grid;place-items:center;color:var(--muted);font-size:13px;border:1px solid var(--line);overflow:hidden}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px}
+.stats div{border-top:2px solid var(--accent);padding-top:10px}
+.stats strong{display:block;font:600 24px/1.2 var(--display);font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+.about{display:grid;grid-template-columns:1fr 1.4fr;gap:48px}
+.about .body{display:grid;gap:16px;color:var(--muted);max-width:62ch}
+.services{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:28px}
+.services .card{gap:10px}
+.services p{color:var(--muted);font-size:14.5px}
+.quotes{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:28px}
+blockquote{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px;display:grid;gap:12px}
+blockquote p{font-size:16px}
+blockquote cite{font-style:normal;font-size:13px;color:var(--muted)}
+.contact{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+.contact .lines{display:grid;gap:10px;margin-top:18px}
+.contact .lines a{font-weight:500;text-decoration:none}
+.sent{background:var(--accent-soft);border-radius:8px;padding:12px 14px;font-size:14px}
+@media (max-width:860px){
+  .hero,.about,.contact{grid-template-columns:1fr;gap:28px}
+  .hero{padding-block:36px}
+  .portrait{max-width:420px;aspect-ratio:1/1}
+  .services,.quotes{grid-template-columns:1fr}
+  section.block{padding-block:44px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/">Gentian<small>Real Estate · Greater Toronto Area</small></a>
+    <nav class="main" aria-label="Main">
+      <a href="#about">About</a>
+      <a href="#services">Services</a>
+      <a href="#contact">Contact</a>
+      <a class="cta" href="/search/">Search homes</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="copy">
+      <p class="eyebrow">Your GTA real estate agent</p>
+      <h1>Find the right home, with someone in your corner.</h1>
+      <p>I'm Gentian. I help buyers and sellers across the Greater Toronto Area make one of the biggest decisions of their lives with clear advice, honest numbers and a lot of local knowledge.</p>
+      <div class="actions">
+        <a class="btn" href="/search/">Search every home on the MLS®</a>
+        <a class="btn ghost" href="#contact">Book a call</a>
+      </div>
+      <div class="stats" aria-label="At a glance">
+        <!-- PLACEHOLDER: replace with real numbers -->
+        <div><strong>00+</strong><span>Homes sold</span></div>
+        <div><strong>00 yrs</strong><span>In GTA real estate</span></div>
+        <div><strong>5.0★</strong><span>Client rating</span></div>
+      </div>
+    </div>
+    <!-- PLACEHOLDER: replace with <img src="/assets/gentian.jpg" alt="Gentian"> -->
+    <div class="portrait" role="img" aria-label="Photo of Gentian coming soon">Your photo here</div>
+  </section>
+
+  <section class="block" id="about">
+    <div class="about">
+      <div>
+        <p class="eyebrow">About me</p>
+        <h2 style="margin-top:10px">Local, straightforward and on your side.</h2>
+      </div>
+      <div class="body">
+        <!-- PLACEHOLDER bio: replace with Gentian's own words -->
+        <p>Buying or selling a home in the GTA moves fast. My job is to slow it down just enough for you to make a confident decision. I'll walk you through the market, the neighbourhoods and the numbers, and I'll tell you what I'd do if I were in your shoes.</p>
+        <p>Whether it's your first condo, a move up for a growing family or selling the house you've loved for years, you'll get the same thing from me: quick answers, careful negotiation and no pressure.</p>
+        <p class="fine">Brokerage name · Registered real estate salesperson</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="services">
+    <p class="eyebrow">How I can help</p>
+    <h2 style="margin-top:10px">Buying, selling, or just exploring.</h2>
+    <div class="services">
+      <div class="card"><h3>Buying</h3><p>A clear plan for your budget, early access to new listings, honest opinions at every showing and a strong offer strategy.</p></div>
+      <div class="card"><h3>Selling</h3><p>Pricing backed by real comparables, staging and photography advice, and marketing that gets your home in front of the right buyers.</p></div>
+      <div class="card"><h3>First-time buyers</h3><p>Every step explained in plain language, from mortgage pre-approval and land transfer tax to closing day.</p></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <p class="eyebrow">Client stories</p>
+    <h2 style="margin-top:10px">What clients say.</h2>
+    <!-- PLACEHOLDER: replace with real client reviews (with their permission) -->
+    <div class="quotes">
+      <blockquote><p>"Client review goes here. A sentence or two about what it was like to work with Gentian."</p><cite>Client name · Neighbourhood</cite></blockquote>
+      <blockquote><p>"Client review goes here. A sentence or two about what it was like to work with Gentian."</p><cite>Client name · Neighbourhood</cite></blockquote>
+    </div>
+  </section>
+
+  <section class="block" id="contact" style="border-bottom:0">
+    <div class="contact">
+      <div>
+        <p class="eyebrow">Get in touch</p>
+        <h2 style="margin-top:10px">Let's talk about your next move.</h2>
+        <!-- PLACEHOLDER contact details -->
+        <div class="lines">
+          <a href="tel:+10000000000">(000) 000-0000</a>
+          <a href="mailto:hello@example.com">hello@example.com</a>
+          <span class="muted">Serving Toronto and the Greater Toronto Area</span>
+        </div>
+      </div>
+      <!-- Netlify Forms: submissions appear in the Netlify dashboard under Forms -->
+      <form class="card" name="contact" method="POST" data-netlify="true" netlify-honeypot="company" action="/thanks.html">
+        <input type="hidden" name="form-name" value="contact">
+        <p hidden><label>Leave this empty <input name="company"></label></p>
+        <div class="row2">
+          <div class="field"><label for="c-name">Name</label><input id="c-name" name="name" autocomplete="name" required></div>
+          <div class="field"><label for="c-phone">Phone</label><input id="c-phone" name="phone" type="tel" autocomplete="tel"></div>
+        </div>
+        <div class="field"><label for="c-email">Email</label><input id="c-email" name="email" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="c-msg">How can I help?</label><textarea id="c-msg" name="message" rows="4"></textarea></div>
+        <button class="btn" type="submit">Send message</button>
+      </form>
+    </div>
+  </section>
+
+  <footer class="site">
+    <span>© <span id="yr"></span> Gentian · Real Estate. Not intended to solicit buyers or sellers currently under contract.</span>
+    <span>The trademarks MLS®, Multiple Listing Service® and the associated logos are owned by The Canadian Real Estate Association (CREA).</span>
+  </footer>
+</div>
+<script>document.getElementById("yr").textContent=new Date().getFullYear();</script>
+</body>
+</html>
