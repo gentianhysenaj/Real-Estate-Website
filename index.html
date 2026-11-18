@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Gentian | Real Estate in the Greater Toronto Area</title>
 <meta name="description" content="Gentian is a Greater Toronto Area real estate agent helping buyers and sellers move with confidence. Search every home on the MLS® and get a free home evaluation.">
-<meta name="theme-color" content="#0e0e0d">
+<meta name="theme-color" content="#f4efe7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="stylesheet" href="/assets/journey.css">
+<link rel="preload" as="image" href="/assets/tour/exterior.webp" fetchpriority="high">
 </head>
 <body class="journey-page">
 
@@ -26,21 +27,22 @@
   <div class="side">Residential<br>Real Estate</div>
 </header>
 
-<!-- ============ The scroll journey: a fixed stage of drawn scenes, with info panels scrolling over it ============ -->
+<!-- ============ The scroll journey: a sticky full-screen stage, with info panels scrolling over it ============ -->
 <main class="journey" id="journey">
   <!-- The stage: real photos of a home (or a walk-through video, see TOUR in assets/journey.js), driven by scroll -->
   <div class="stage" aria-hidden="true">
     <div class="shots" id="shots"></div>
     <canvas class="tour-canvas" id="tour-canvas" hidden></canvas>
     <video class="tour-video" id="tour-video" muted playsinline preload="auto" hidden></video>
+    <div class="sun" id="sun"></div>
     <div class="grade" id="grade"></div>
-    <div class="flash" id="flash"></div>
+    <div class="dusk" id="dusk"></div>
     <div class="vignette"></div>
   </div>
 
   <!-- HUD: where you are in the home + time of day -->
   <ol class="rooms" id="rooms" aria-label="Tour progress">
-    <li data-at="0">Arrival</li><li data-at=".15">Front door</li><li data-at=".28">Entrance</li><li data-at=".42">Living</li><li data-at=".59">Kitchen</li><li data-at=".78">Backyard</li>
+    <li data-at="0">Arrival</li><li data-at=".14">Front door</li><li data-at=".24">Living room</li><li data-at=".46">Staircase</li><li data-at=".72">Backyard</li>
   </ol>
   <div class="clock mono" id="clock" aria-hidden="true">10:30 AM</div>
 
@@ -171,8 +173,7 @@
 
 <footer class="site wrap">
   <span>© <span id="yr"></span> Gentian · Real Estate · Brokerage name. Not intended to solicit buyers or sellers currently under contract.</span>
-  <span id="credits"></span>
-  <span>The trademarks MLS®, Multiple Listing Service® and the associated logos are owned by The Canadian Real Estate Association (CREA).</span>
+    <span>The trademarks MLS®, Multiple Listing Service® and the associated logos are owned by The Canadian Real Estate Association (CREA).</span>
 </footer>
 
 <script src="/assets/journey.js" defer></script>

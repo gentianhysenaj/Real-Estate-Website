@@ -1,13 +1,13 @@
-/* Shared styles for every page. Dark, cinematic look: big thin uppercase headlines, small monospace labels.
-   Colours live in :root so the whole site can be re-themed in one place. */
+/* Shared styles for every page. Warm limestone and travertine palette with big thin uppercase headlines
+   and small monospace labels. Colours live in :root so the whole site can be re-themed in one place. */
 :root{
-  --bg:#0e0e0d; --surface:#161614; --surface-2:#1d1d1a; --ink:#ece8e1; --muted:#9b968d; --line:#2b2a26;
-  --accent:#d2c2a6; --accent-ink:#121210; --accent-soft:#24221d; --warn:#e48a6a;
+  --bg:#f4efe7; --surface:#fbf8f3; --surface-2:#ece5da; --ink:#2b251f; --muted:#7b7064; --line:#ddd3c5;
+  --accent:#8a6a48; --accent-ink:#fbf8f3; --accent-soft:#ebe2d5; --warn:#a5462a;
   --display:"Inter Tight",ui-sans-serif,system-ui,sans-serif;
   --body:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --r:2px; --gutter:max(16px,env(safe-area-inset-left,0px),3.5vw);
-  color-scheme:dark;
+  color-scheme:light;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}

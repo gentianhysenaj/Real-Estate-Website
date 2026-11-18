@@ -17,5 +17,6 @@ The contact form and the home-search sign-up use **Netlify Forms**. Submissions 
 - PIN: `PIN_HASH` in `presentations/index.html` (SHA-256 of the PIN)
 
 ## Home page scroll tour
-`assets/journey.js` drives the home page: scrolling walks through a home (exterior → front door → rooms → backyard at sunset).
-Swap the photos in `TOUR.shots`, or set `TOUR.video` to a walk-through clip to scrub through it on scroll.
+`assets/journey.js` drives the home page: one continuous camera move from a sunny arrival, through the living room and staircase, to the backyard at sunset as the lights come on.
+- Now: three reference photos in `assets/tour/` (`TOUR.shots`). They are placeholders sourced from Pinterest; replace them with images you own or have licensed before promoting the site.
+- Later: a walk-through video. Cut it into frames with `tools/make-tour-frames.sh` and set `TOUR.frames.count` for a fully seamless, preloaded tour.
