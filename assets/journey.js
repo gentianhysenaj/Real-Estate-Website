@@ -1,17 +1,15 @@
 /* Scroll journey on the home page.
-   Scroll position (0 to 1) drives a walk through a real home: each photo slowly pushes in toward a
-   focal point (the front door, the next doorway...) and dissolves into the next room, while the light
-   warms from midday to sunset.
+   Scroll position (0 to 1) drives a walk through a home, from the street to the backyard at sunset.
 
-   ── To use your own footage ──────────────────────────────────────────────────────────────
-   • Photos: replace the `src` of each shot below (e.g. "/assets/tour/01-exterior.jpg").
-     `focus` is where the camera pushes in to, as % from left / top of the photo.
-   • Video: set TOUR.video to a walk-through clip (e.g. "/assets/tour/walkthrough.mp4").
-     Scrolling then scrubs through the video instead of the photos. For smooth scrubbing,
-     export it with a keyframe on every frame, e.g.:
-       ffmpeg -i in.mov -an -vf scale=1920:-2 -c:v libx264 -crf 24 -g 1 -movflags +faststart walkthrough.mp4
+   ── Three ways to feed it, best first ──────────────────────────────────────────────────────
+   1. FRAMES (seamless, no buffering): one continuous walk-through video, cut into still frames
+      with tools/make-tour-frames.sh. Every frame is preloaded (coarse pass first, then the gaps),
+      and scrolling flips through them on a canvas, so it never stalls. Set TOUR.frames.count.
+   2. VIDEO: set TOUR.video to an mp4. The whole file is downloaded before scrubbing starts.
+   3. PHOTOS (fallback): TOUR.shots, each photo pushes in and dissolves into the next.
    ─────────────────────────────────────────────────────────────────────────────────────────── */
 const TOUR = {
+  frames: {dir: "/assets/tour/frames/", count: 0, ext: "webp", digits: 4},   // count = number of frames made by the script
   video: "",
   // Interim photos: free to use under the Unsplash licence (unsplash.com/license). Photographers credited in the footer.
   shots: [
@@ -38,8 +36,52 @@ const TOUR = {
   const url = (id, w) => id.startsWith("/") || id.startsWith("http") ? id
     : `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=72`;
 
-  /* ---------- build the photo layers ---------- */
-  const shots = TOUR.shots.map((s, i) => {
+  /* ---------- 1. frame sequence on a canvas ---------- */
+  const F = TOUR.frames, useFrames = F && F.count > 0;
+  const canvas = $("tour-canvas"), ctx = canvas && canvas.getContext("2d"), loader = $("tour-loader");
+  const frames = [];
+  let loaded = 0, lastDrawn = -1;
+  if (useFrames) {
+    shotsEl.hidden = true; canvas.hidden = false;
+    const name = i => F.dir + String(i + 1).padStart(F.digits, "0") + "." + F.ext;
+    // load order: every 16th frame, then every 4th, then the rest, so any scroll position has a close frame early
+    const order = [], seen = new Set();
+    for (const step of [16, 4, 1]) for (let i = 0; i < F.count; i += step) if (!seen.has(i)) { seen.add(i); order.push(i); }
+    let next = 0;
+    const pump = () => {
+      if (next >= order.length) return;
+      const i = order[next++], img = new Image();
+      img.decoding = "async";
+      img.onload = async () => {
+        try { await img.decode(); } catch(_){}
+        frames[i] = img; loaded++;
+        if (loader) { loader.style.setProperty("--pct", (loaded / F.count * 100).toFixed(1) + "%"); if (loaded === F.count) loader.classList.add("done"); }
+        if (i === 0 || lastDrawn < 0) render(shown);
+        pump();
+      };
+      img.onerror = () => { loaded++; pump(); };
+      img.src = name(i);
+    };
+    for (let k = 0; k < 6; k++) pump();
+    if (loader) loader.hidden = false;
+  }
+  function sizeCanvas(){
+    if (!canvas) return;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.round(innerWidth * dpr); canvas.height = Math.round(innerHeight * dpr); lastDrawn = -1;
+  }
+  function drawFrame(p){
+    const want = Math.round(p * (F.count - 1));
+    let i = want;                                            // nearest frame that has arrived
+    for (let d = 0; d < F.count; d++) { if (frames[want - d]) { i = want - d; break; } if (frames[want + d]) { i = want + d; break; } }
+    const img = frames[i]; if (!img || i === lastDrawn) return;
+    const cw = canvas.width, ch = canvas.height, s = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+    const w = img.naturalWidth * s, h = img.naturalHeight * s;
+    ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h); lastDrawn = i;
+  }
+
+  /* ---------- 3. photo layers (fallback) ---------- */
+  const shots = (useFrames ? [] : TOUR.shots).map((s, i) => {
     const img = new Image();
     img.alt = ""; img.decoding = "async"; img.loading = i < 2 ? "eager" : "lazy";
     if (i === 0) img.fetchPriority = "high";
@@ -57,20 +99,25 @@ const TOUR = {
 
   // photo credits (required courtesy for Unsplash photos)
   const credits = $("credits");
-  if (credits) credits.textContent = "Photos: " + [...new Set(shots.filter(s => s.by).map(s => s.by))].join(", ") + " on Unsplash.";
+  if (credits && shots.length) credits.textContent = "Photos: " + [...new Set(shots.filter(s => s.by).map(s => s.by))].join(", ") + " on Unsplash.";
 
   /* ---------- optional scroll-scrubbed video ---------- */
-  const useVideo = !!TOUR.video;
+  const useVideo = !useFrames && !!TOUR.video;
   if (useVideo) {
-    video.src = TOUR.video; video.hidden = false; shotsEl.hidden = true;
-    video.addEventListener("loadedmetadata", () => render(shown));
+    shotsEl.hidden = true; video.hidden = false;
+    // download the whole clip first so seeking never has to wait on the network
+    fetch(TOUR.video).then(r => r.blob()).then(b => {
+      video.src = URL.createObjectURL(b);
+      video.addEventListener("loadedmetadata", () => render(shown), {once: true});
+    }).catch(() => { video.src = TOUR.video; });
   }
 
   /* ---------- the timeline ---------- */
   let target = 0, shown = 0;
   function render(p){
-    if (useVideo) {
-      if (video.duration) video.currentTime = p * (video.duration - .05);
+    if (useFrames) drawFrame(p);
+    else if (useVideo) {
+      if (video.duration && !video.seeking) video.currentTime = p * (video.duration - .05);
     } else {
       shots.forEach((s, i) => {
         const fadeIn = i === 0 ? 1 : seg(p, s.from, s.from + .03);
@@ -89,7 +136,7 @@ const TOUR = {
     }
     // light: neutral midday, then warmer and warmer toward sunset
     const warm = seg(p, .35, .95);
-    grade.style.opacity = (warm * .4).toFixed(3);
+    grade.style.opacity = (useFrames || useVideo) ? "0" : (warm * .4).toFixed(3);
     flash.style.opacity = "0";
 
     // HUD: room + time of day (10:30 AM to 8:30 PM)
@@ -116,8 +163,8 @@ const TOUR = {
   }
   function kick(){ measure(); if (!raf) raf = requestAnimationFrame(tick); }
   addEventListener("scroll", kick, {passive: true});
-  addEventListener("resize", () => { fit(); measure(); render(shown); });
-  fit(); measure(); shown = target; render(shown);
+  addEventListener("resize", () => { sizeCanvas(); fit(); measure(); render(shown); });
+  sizeCanvas(); fit(); measure(); shown = target; render(shown);
 
   rooms.forEach(li => li.addEventListener("click", () => {
     const range = journey.offsetHeight - innerHeight;

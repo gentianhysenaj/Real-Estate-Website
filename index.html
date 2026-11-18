@@ -31,6 +31,7 @@
   <!-- The stage: real photos of a home (or a walk-through video, see TOUR in assets/journey.js), driven by scroll -->
   <div class="stage" aria-hidden="true">
     <div class="shots" id="shots"></div>
+    <canvas class="tour-canvas" id="tour-canvas" hidden></canvas>
     <video class="tour-video" id="tour-video" muted playsinline preload="auto" hidden></video>
     <div class="grade" id="grade"></div>
     <div class="flash" id="flash"></div>
@@ -52,6 +53,7 @@
       <div class="actions"><a class="btn light" href="/search/">Search homes</a><a class="btn ghost light" href="#contact" data-reason="Home evaluation">What's my home worth?</a></div>
     </div>
     <p class="cue mono">Scroll to step inside ↓</p>
+    <div class="tour-loader mono" id="tour-loader" hidden><span>Loading the tour</span><i></i></div>
   </section>
 
   <section class="panel right" style="--at:.12" id="results">
