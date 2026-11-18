@@ -64,7 +64,7 @@ const TOUR = {
 
   /* ---------- 1. frame sequence on a canvas ---------- */
   const F = TOUR.frames, useFrames = F && F.count > 0;
-  const canvas = $("tour-canvas"), ctx = canvas && canvas.getContext("2d"), loader = $("tour-loader");
+  const canvas = $("tour-canvas"), ctx = canvas && canvas.getContext("2d", {alpha: false}), loader = $("tour-loader");
   const frames = [];
   let loaded = 0, lastDrawn = -1;
   if (useFrames) {
@@ -89,10 +89,19 @@ const TOUR = {
     };
     for (let k = 0; k < 6; k++) pump();
   }
+  // the stage's own size (100lvh), so phone address bars sliding in and out don't resize anything
+  let VW = innerWidth, VH = innerHeight;
   function sizeCanvas(){
-    if (!useFrames) return;
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    canvas.width = Math.round(innerWidth * dpr); canvas.height = Math.round(innerHeight * dpr); lastDrawn = -1;
+    if (!useFrames && !useShots) return;
+    const r = canvas.getBoundingClientRect();
+    VW = r.width || innerWidth; VH = r.height || innerHeight;
+    let dpr = Math.min(devicePixelRatio || 1, useShots ? 3 : 2);
+    if (useShots) dpr = Math.min(dpr, Math.sqrt(3840 * 2160 / (VW * VH)));   // no point beyond the photos' own detail
+    const w = Math.round(VW * dpr), h = Math.round(VH * dpr);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; lastDrawn = -1; }
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    // big or high-density screens get the 4K photos (name@2x.webp)
+    if (useShots && !want2x && "createImageBitmap" in window && Math.max(w, h * 16 / 9) * 1.3 > 2100) { want2x = true; fetchHi(); }
   }
   function drawFrame(p){
     const want = Math.round(p * (F.count - 1));
@@ -115,31 +124,52 @@ const TOUR = {
   }
 
   /* ---------- 3. photo sets with a moving camera ---------- */
-  const shots = (useFrames || useVideo ? [] : TOUR.shots).map((s, i) => {
-    const wrap = document.createElement("div"); wrap.className = "set";
-    const img = new Image(); img.alt = ""; img.decoding = "async"; img.src = s.src;
-    if (i === 0) img.fetchPriority = "high";
-    wrap.append(img);
+  // Each frame is drawn on a canvas straight from the photo, so a zoomed-in photo is as sharp as the
+  // file allows (CSS-scaled layers can be scaled up from a cached low-resolution copy and look soft).
+  // Every photo is decoded ahead of time (1920 px), so scrolling never waits; on large or high-density
+  // screens the 4K versions are fetched afterwards and decoded just ahead of the camera.
+  const useShots = !useFrames && !useVideo && TOUR.shots.length > 0;
+  if (useShots) canvas.hidden = false;
+  let want2x = false, loLeft = TOUR.shots.length;
+  const toBitmap = async src => {
+    const img = new Image(); img.decoding = "async"; img.src = src;
+    if (src === TOUR.shots[0].src) img.fetchPriority = "high";
+    await img.decode();
+    return window.createImageBitmap ? createImageBitmap(img) : img;
+  };
+  const shots = (useShots ? TOUR.shots : []).map(s => {
     const glows = (s.glows || []).map(g => {
       const el = document.createElement("i"); el.className = "glow" + (g.flicker ? " flicker" : "");
-      el.style.cssText = `left:${g.x * 100}%;top:${g.y * 100}%;--r:${g.r};--c:${g.c}`;
-      wrap.append(el); return el;
+      el.style.setProperty("--c", g.c); shotsEl.append(el); return {...g, el};
     });
-    shotsEl.append(wrap);
-    const shot = {...s, wrap, img, glows, w: 0, h: 0};
-    // decode up front so no frame of the scroll ever waits on an image
-    const ready = () => (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => { shot.w = img.naturalWidth; shot.h = img.naturalHeight; layout(); render(shown); });
-    if (img.complete && img.naturalWidth) queueMicrotask(ready); else img.addEventListener("load", ready, {once: true});
+    const shot = {...s, glows, w: 0, h: 0, lo: null, hi: null, hiBlob: null, hiBusy: false, near: false};
+    toBitmap(s.src).then(b => {
+      shot.lo = b; shot.w = b.width || b.naturalWidth; shot.h = b.height || b.naturalHeight;
+      layout(); render(shown);
+    }).catch(() => {}).finally(() => { if (--loLeft === 0) fetchHi(); });
     return shot;
   });
+  function fetchHi(){
+    if (!want2x || loLeft > 0) return;                        // the 1920 set always comes first
+    shots.forEach(s => { if (!s.hiBlob) fetch(s.src.replace(/\.webp$/, "@2x.webp")).then(r => r.ok ? r.blob() : null)
+      .then(b => { s.hiBlob = b; sharpen(shown); }).catch(() => {}); });
+  }
+  // keep the 4K version decoded only for the rooms near the camera, to stay light on phones
+  function sharpen(p){
+    shots.forEach(s => {
+      s.near = p > s.from - .1 && p < s.to + .05;
+      if (s.near && s.hiBlob && !s.hi && !s.hiBusy) {
+        s.hiBusy = true;
+        createImageBitmap(s.hiBlob).then(b => { s.hiBusy = false; if (s.near) { s.hi = b; render(shown); } else b.close(); })
+          .catch(() => { s.hiBusy = false; s.hiBlob = null; });
+      } else if (!s.near && s.hi) { s.hi.close(); s.hi = null; }
+    });
+  }
   function layout(){
-    const W = innerWidth, H = innerHeight;
     shots.forEach(s => {
       if (!s.w) return;
-      const c = Math.max(W / s.w, H / s.h);                    // "cover" size at zoom 1
+      const c = Math.max(VW / s.w, VH / s.h);                  // "cover" size at zoom 1
       s.bw = s.w * c; s.bh = s.h * c;
-      s.wrap.style.width = s.bw + "px"; s.wrap.style.height = s.bh + "px";
-      s.glows.forEach(g => { const r = parseFloat(g.style.getPropertyValue("--r")) * s.bw; g.style.width = g.style.height = r * 2 + "px"; g.style.margin = -r + "px 0 0 " + -r + "px"; });
     });
   }
   function camAt(cam, t){
@@ -154,7 +184,7 @@ const TOUR = {
   // sits inside the previous one, like the foyer seen through the front door), so both photos stay
   // locked together through the dissolve; then it eases onto its own path.
   function camFor(s, i, p){
-    const W = innerWidth, H = innerHeight;
+    const W = VW, H = VH;
     // the camera keeps moving through the melt: before/after its range the shot keeps drifting the same way
     const span = s.to - s.from, t = (p - s.from) / span;
     let [x, y, z] = camAt(s.cam, clamp(t));
@@ -174,17 +204,10 @@ const TOUR = {
     x = clamp(x, hw, 1 - hw); y = clamp(y, hh, 1 - hh);
     return (s.cur = [x, y, z]);
   }
-  function placeShot(s, [x, y, z]){
-    const W = innerWidth, H = innerHeight;
-    s.wrap.style.transform = `translate3d(${(W / 2 - x * s.bw * z).toFixed(1)}px,${(H / 2 - y * s.bh * z).toFixed(1)}px,0) scale(${z.toFixed(4)})`;
-  }
-
-  /* ---------- the timeline ---------- */
-  let target = 0, shown = 0;
-  function render(p){
-    if (useFrames) drawFrame(p);
-    else if (useVideo) { if (video.duration && !video.seeking) video.currentTime = p * (video.duration - .05); }
-    else shots.forEach((s, i) => {
+  function drawShots(p){
+    const cw = canvas.width, ch = canvas.height, k = cw / VW, layers = [];
+    if (Math.abs(p - (drawShots.at ?? -1)) > .004) { drawShots.at = p; sharpen(p); }
+    shots.forEach((s, i) => {
       if (!s.bw) { s.cur = null; return; }
       const cam = camFor(s, i, p);
       // each set dissolves in on top of the one before; the one below stays solid until it's covered,
@@ -192,17 +215,39 @@ const TOUR = {
       const fadeIn = i === 0 ? 1 : smooth(seg(p, s.from, s.from + OVERLAP));
       const next = shots[i + 1], covering = next ? seg(p, next.from, next.from + OVERLAP) : 0;
       const o = covering >= 1 ? 0 : fadeIn;
-      s.wrap.style.opacity = o.toFixed(3);
-      s.wrap.style.visibility = o > .001 ? "visible" : "hidden";
-      if (o > .001) placeShot(s, cam);
-      // the outgoing set softens as you move past it, so the hand-off reads as motion, not a cut
-      const soft = reduce || s.seamlessOut ? 0 : covering * 5;
-      s.img.style.filter = soft > .2 ? `blur(${soft.toFixed(1)}px)` : "";
+      if (o > .001) layers.push([s, cam, o]);
       if (s.glows.length) {
-        const lights = smooth(seg(p, .87, .99));
-        s.glows.forEach(g => g.style.opacity = lights.toFixed(3));
+        const [x, y, z] = cam, lights = smooth(seg(p, .87, .99)) * o;
+        s.glows.forEach(g => {
+          g.el.style.opacity = lights.toFixed(3);
+          if (lights > .001) {
+            const r = g.r * s.bw * z, cx = VW / 2 + (g.x - x) * s.bw * z, cy = VH / 2 + (g.y - y) * s.bh * z;
+            g.el.style.transform = `translate3d(${(cx - 200).toFixed(1)}px,${(cy - 200).toFixed(1)}px,0) scale(${(r / 200).toFixed(3)})`;
+          }
+        });
       }
     });
+    // start from the top-most solid layer: nothing beneath it can show
+    let first = 0; layers.forEach(([, , o], j) => { if (o >= .999) first = j; });
+    if (!layers.length || layers[first][2] < .999) { ctx.globalAlpha = 1; ctx.fillStyle = "#d9cfc1"; ctx.fillRect(0, 0, cw, ch); }
+    for (const [s, [x, y, z], o] of layers.slice(first)) {
+      const src = s.hi || s.lo, iw = src.width || src.naturalWidth, ih = src.height || src.naturalHeight;
+      const dw = s.bw * z * k, dh = s.bh * z * k, dx = (VW / 2 - x * s.bw * z) * k, dy = (VH / 2 - y * s.bh * z) * k;
+      // only the part of the photo that's on screen
+      const sx = Math.max(0, -dx / dw * iw), sy = Math.max(0, -dy / dh * ih);
+      const sw = Math.min(iw - sx, cw / dw * iw), sh = Math.min(ih - sy, ch / dh * ih);
+      ctx.globalAlpha = o;
+      ctx.drawImage(src, sx, sy, sw, sh, dx + sx / iw * dw, dy + sy / ih * dh, sw / iw * dw, sh / ih * dh);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------- the timeline ---------- */
+  let target = 0, shown = 0;
+  function render(p){
+    if (useFrames) drawFrame(p);
+    else if (useVideo) { if (video.duration && !video.seeking) video.currentTime = p * (video.duration - .05); }
+    else drawShots(p);
 
     // daylight: a bright sun to start, warming through the afternoon, a sunset sky over the backyard
     if (!useFrames && !useVideo) {
