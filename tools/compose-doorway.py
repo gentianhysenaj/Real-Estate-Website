@@ -11,11 +11,11 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter
 
 # Opening inside the door frame (left, top, right, bottom) and the open door leaf, which stays in front.
-OPENING = (0.379, 0.193, 0.628, 0.751)
-LEAF = [(0.515, 0.223), (0.574, 0.171), (0.574, 0.751), (0.519, 0.744)]
+OPENING = (0.3787, 0.1900, 0.6268, 0.7465)
+LEAF = [(0.5172, 0.2245), (0.5615, 0.1660), (0.5740, 0.1660), (0.5740, 0.7900), (0.5172, 0.7258)]
 
 
-def compose(door_path, foyer_path, out_path, width=2400):
+def compose(door_path, foyer_path, out_path, width=1920):
     door = Image.open(door_path).convert("RGB")
     foyer = Image.open(foyer_path).convert("RGB")
     if door.width < width:

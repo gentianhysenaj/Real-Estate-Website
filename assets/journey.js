@@ -1,7 +1,8 @@
 /* Scroll journey on the home page.
-   Scroll position (0 to 1) drives one continuous camera move through a home: a sunny arrival, up the
-   walk to the front door, through the living room and up the staircase, then out to the backyard as
-   the sun sets and the lights come on. Info panels scroll over the top.
+   Scroll position (0 to 1) drives one continuous camera move through one house: the front in full sun,
+   up the walk as the front door swings open, through the foyer into the open-concept living space,
+   then out through the back glass doors to the backyard as the sun sets and the lights come on.
+   Info panels scroll over the top.
 
    ── Three ways to feed it, best first ──────────────────────────────────────────────────────
    1. FRAMES (seamless walk-through video, no buffering): cut a continuous video into frames with
@@ -15,22 +16,22 @@
 const TOUR = {
   frames: {dir: "/assets/tour/frames/", count: 0, ext: "webp", digits: 4},
   video: "",
-  // Set to true once the eight house shots are in assets/tour/ (01-front.webp ... 08-backyard.webp).
-  useHouseShots: false,
   // One house, eight AI-generated shots made to match (Canva). The camera keeps moving through each
   // hand-off. Pairs marked seamlessOut/seamlessIn share one camera position, so the front door and the
   // back doors appear to swing open in place as you scroll.
-  houseShots: [
+  shots: [
     {room: "Front",            src: "/assets/tour/01-front.webp",         from: 0,   to: .14,
       cam: [[0, .5, .5, 1.0], [1, .5, .6, 2.0]]},
     {room: "Front door",       src: "/assets/tour/02-door.webp",          from: .12, to: .25, seamlessOut: true,
       cam: [[0, .5, .52, 1.0], [1, .5, .5, 1.1]]},
-    {room: "Door opens",       src: "/assets/tour/03-door-open.webp",     from: .20, to: .31, seamlessIn: true, seamlessOut: true,
-      // the foyer photo is set into this doorway (tools/compose-doorway.py); the camera ends with the
-      // opening filling the screen height, where it lines up exactly with the foyer photo below
-      cam: [[0, .5, .5, 1.08], [.35, .5, .49, 1.15], [1, .5035, .4722, 1.792]]},
+    {room: "Door opens",       src: "/assets/tour/03-door-open.webp",     from: .20, to: .36, seamlessIn: true, seamlessOut: true,
+      // walk in through the doorway: the foyer photo is set into it (tools/compose-doorway.py)
+      cam: [[0, .5, .5, 1.08], [1, .5026, .4681, 2.1]]},
     {room: "Foyer",            src: "/assets/tour/04-foyer.webp",         from: .31, to: .47, seamlessIn: true,
-      cam: [[0, .5, .5, 1.0], [1, .5, .52, 1.4]]},
+      // this photo is the view through the doorway of the shot before: centre and zoom printed by
+      // tools/compose-doorway.py, so the two stay locked together while one dissolves into the other
+      inside: {x: .5026, y: .4681, scale: 1.797},
+      cam: [[0, .5, .5, 1.05], [1, .5, .52, 1.45]]},
     {room: "Open concept",     src: "/assets/tour/05-open-concept.webp",  from: .44, to: .64,
       cam: [[0, .42, .56, 1.12], [.5, .47, .55, 1.06], [1, .47, .52, 1.45]]},
     {room: "Back door closed", src: "/assets/tour/06-back-door.webp",     from: .61, to: .77, seamlessOut: true,
@@ -40,26 +41,10 @@ const TOUR = {
     {room: "Backyard",         src: "/assets/tour/08-backyard.webp",      from: .83, to: 1,
       cam: [[0, .52, .65, 1.35], [.6, .5, .58, 1.1], [1, .5, .5, 1.0]],
       glows: [
-        {x: .52, y: .66, r: .12, c: "255,170,80", flicker: 1},  // fire pit
-        {x: .65, y: .45, r: .2, c: "255,196,120"},              // uplit garden wall
-        {x: .08, y: .3, r: .12, c: "255,214,150"},              // soffit downlights
-      ]},
-  ],
-  // Three reference photos (what is live until the house shots arrive).
-  shots: [
-    {room: "Exterior", src: "/assets/tour/exterior.webp", from: 0, to: .24,
-      cam: [[0, .5, .2, 1.0], [.5, .5, .55, 1.1], [1, .5, .8, 1.42]]},
-    {room: "Interior", src: "/assets/tour/interior.webp", from: .19, to: .70,
-      cam: [[0, .42, .72, 1.18], [.3, .45, .66, 1.06], [.62, .6, .38, 1.08], [1, .64, .5, 1.34]]},
-    {room: "Backyard", src: "/assets/tour/backyard.webp", from: .65, to: 1,
-      cam: [[0, .5, .58, 1.3], [.55, .5, .52, 1.08], [1, .5, .34, 1.0]],
-      // warm lights that switch on at dusk: x/y/size are fractions of the photo
-      glows: [
-        {x: .53, y: .6, r: .2, c: "255,170,80", flicker: 1},   // fire pit
-        {x: .62, y: .47, r: .32, c: "255,196,120"},            // uplit stone wall
-        {x: .12, y: .2, r: .16, c: "255,214,150"},             // soffit downlights
-        {x: .2, y: .5, r: .12, c: "255,200,130"},              // olive tree uplight
-        {x: .4, y: .44, r: .1, c: "255,200,130"},              // cypress uplight
+        {x: .5, y: .655, r: .11, c: "255,170,80", flicker: 1},  // fire pit
+        {x: .32, y: .44, r: .12, c: "255,196,120"},             // uplit olive and garden wall, left
+        {x: .8, y: .46, r: .14, c: "255,196,120"},              // uplit olive and garden wall, right
+        {x: .15, y: .14, r: .09, c: "255,214,150"},             // soffit downlights
       ]},
   ],
 };
@@ -130,7 +115,7 @@ const TOUR = {
   }
 
   /* ---------- 3. photo sets with a moving camera ---------- */
-  const shots = (useFrames || useVideo ? [] : TOUR.useHouseShots ? TOUR.houseShots : TOUR.shots).map((s, i) => {
+  const shots = (useFrames || useVideo ? [] : TOUR.shots).map((s, i) => {
     const wrap = document.createElement("div"); wrap.className = "set";
     const img = new Image(); img.alt = ""; img.decoding = "async"; img.src = s.src;
     if (i === 0) img.fetchPriority = "high";
@@ -164,17 +149,33 @@ const TOUR = {
     }
     const z = cam.at(-1); return [z[1], z[2], z[3]];
   }
-  function placeShot(s, p){
+  // Where the camera is for shot i at scroll p: x/y = point of the photo at the screen centre, z = zoom.
+  // A seamlessIn shot first rides on the previous shot's camera (mapped through `inside` when its photo
+  // sits inside the previous one, like the foyer seen through the front door), so both photos stay
+  // locked together through the dissolve; then it eases onto its own path.
+  function camFor(s, i, p){
     const W = innerWidth, H = innerHeight;
     // the camera keeps moving through the melt: before/after its range the shot keeps drifting the same way
     const span = s.to - s.from, t = (p - s.from) / span;
     let [x, y, z] = camAt(s.cam, clamp(t));
     if (t > 1 && !s.seamlessOut) z *= 1 + (t - 1) * span * 4;  // keep pushing forward while leaving
     if (t < 0 && !s.seamlessIn) z *= 1 / (1 - t * span * 2.5);  // arrive slightly wide, already moving in
+    const prev = shots[i - 1];
+    if (s.seamlessIn && prev && prev.cur && p < s.from + 2 * OVERLAP) {
+      const m = s.inside || {x: .5, y: .5, scale: 1}, [px, py, pz] = prev.cur;
+      const k = smooth(seg(p, s.from + OVERLAP, s.from + 2 * OVERLAP));
+      x = lerp(.5 + (px - m.x) * m.scale, x, k);
+      y = lerp(.5 + (py - m.y) * m.scale, y, k);
+      z = lerp(pz / m.scale, z, k);
+    }
     if (reduce) z = 1.02;
     z = Math.max(z, 1);
     const hw = W / 2 / (s.bw * z), hh = H / 2 / (s.bh * z);    // never show the photo's edges
     x = clamp(x, hw, 1 - hw); y = clamp(y, hh, 1 - hh);
+    return (s.cur = [x, y, z]);
+  }
+  function placeShot(s, [x, y, z]){
+    const W = innerWidth, H = innerHeight;
     s.wrap.style.transform = `translate3d(${(W / 2 - x * s.bw * z).toFixed(1)}px,${(H / 2 - y * s.bh * z).toFixed(1)}px,0) scale(${z.toFixed(4)})`;
   }
 
@@ -184,7 +185,8 @@ const TOUR = {
     if (useFrames) drawFrame(p);
     else if (useVideo) { if (video.duration && !video.seeking) video.currentTime = p * (video.duration - .05); }
     else shots.forEach((s, i) => {
-      if (!s.bw) return;
+      if (!s.bw) { s.cur = null; return; }
+      const cam = camFor(s, i, p);
       // each set dissolves in on top of the one before; the one below stays solid until it's covered,
       // so the background never shows through mid-dissolve
       const fadeIn = i === 0 ? 1 : smooth(seg(p, s.from, s.from + OVERLAP));
@@ -192,22 +194,22 @@ const TOUR = {
       const o = covering >= 1 ? 0 : fadeIn;
       s.wrap.style.opacity = o.toFixed(3);
       s.wrap.style.visibility = o > .001 ? "visible" : "hidden";
-      if (o > .001) placeShot(s, p);
+      if (o > .001) placeShot(s, cam);
       // the outgoing set softens as you move past it, so the hand-off reads as motion, not a cut
       const soft = reduce || s.seamlessOut ? 0 : covering * 5;
       s.img.style.filter = soft > .2 ? `blur(${soft.toFixed(1)}px)` : "";
       if (s.glows.length) {
-        const lights = TOUR.useHouseShots ? smooth(seg(p, .87, .99)) : smooth(seg(p, .8, .97));
+        const lights = smooth(seg(p, .87, .99));
         s.glows.forEach(g => g.style.opacity = lights.toFixed(3));
       }
     });
 
     // daylight: a bright sun to start, warming through the afternoon, a sunset sky over the backyard
     if (!useFrames && !useVideo) {
-      const H = TOUR.useHouseShots;                              // the house shots carry their own daylight
-      sun.style.opacity = H ? ((1 - smooth(seg(p, .06, .2))) * .6).toFixed(3) : (1 - smooth(seg(p, .08, .3))).toFixed(3);
-      grade.style.opacity = (smooth(seg(p, .3, .95)) * (H ? .18 : .5)).toFixed(3);
-      dusk.style.opacity = (H ? smooth(seg(p, .85, 1)) * .25 : smooth(seg(p, .7, 1)) * .85).toFixed(3);
+      // the photos carry their own daylight, so these only add a touch of sun, warmth and sunset
+      sun.style.opacity = ((1 - smooth(seg(p, .06, .2))) * .6).toFixed(3);
+      grade.style.opacity = (smooth(seg(p, .3, .95)) * .18).toFixed(3);
+      dusk.style.opacity = (smooth(seg(p, .85, 1)) * .25).toFixed(3);
     }
 
     let on = 0; rooms.forEach((li, i) => { if (p + .02 >= +li.dataset.at) on = i; });
