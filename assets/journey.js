@@ -25,10 +25,12 @@ const TOUR = {
       cam: [[0, .5, .5, 1.0], [1, .5, .6, 2.0]]},
     {room: "Front door",       src: "/assets/tour/02-door.webp",          from: .12, to: .25, seamlessOut: true,
       cam: [[0, .5, .52, 1.0], [1, .5, .5, 1.1]]},
-    {room: "Door opens",       src: "/assets/tour/03-door-open.webp",     from: .20, to: .34, seamlessIn: true,
-      cam: [[0, .5, .5, 1.08], [1, .5, .48, 2.0]]},
-    {room: "Foyer",            src: "/assets/tour/04-foyer.webp",         from: .31, to: .47,
-      cam: [[0, .5, .55, 1.0], [1, .5, .55, 1.4]]},
+    {room: "Door opens",       src: "/assets/tour/03-door-open.webp",     from: .20, to: .31, seamlessIn: true, seamlessOut: true,
+      // the foyer photo is set into this doorway (tools/compose-doorway.py); the camera ends with the
+      // opening filling the screen height, where it lines up exactly with the foyer photo below
+      cam: [[0, .5, .5, 1.08], [.35, .5, .49, 1.15], [1, .5035, .4722, 1.792]]},
+    {room: "Foyer",            src: "/assets/tour/04-foyer.webp",         from: .31, to: .47, seamlessIn: true,
+      cam: [[0, .5, .5, 1.0], [1, .5, .52, 1.4]]},
     {room: "Open concept",     src: "/assets/tour/05-open-concept.webp",  from: .44, to: .64,
       cam: [[0, .42, .56, 1.12], [.5, .47, .55, 1.06], [1, .47, .52, 1.45]]},
     {room: "Back door closed", src: "/assets/tour/06-back-door.webp",     from: .61, to: .77, seamlessOut: true,
