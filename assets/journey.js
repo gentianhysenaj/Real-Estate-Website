@@ -15,6 +15,32 @@
 const TOUR = {
   frames: {dir: "/assets/tour/frames/", count: 0, ext: "webp", digits: 4},
   video: "",
+  // Set to true once the seven house shots are in assets/tour/ (01-front.webp ... 07-backyard.webp).
+  useHouseShots: false,
+  // One house, seven AI-generated shots made to match (Canva). The camera keeps moving through each
+  // hand-off, so walking up to the door, through it, across the foyer and out back reads as one move.
+  houseShots: [
+    {room: "Front",        src: "/assets/tour/01-front.webp",    from: 0,   to: .15,
+      cam: [[0, .5, .5, 1.0], [1, .5, .6, 1.55]]},
+    {room: "Front door",   src: "/assets/tour/02-door.webp",     from: .12, to: .25,
+      cam: [[0, .5, .52, 1.0], [1, .5, .5, 1.16]]},
+    {room: "Door opens",   src: "/assets/tour/03-door-open.webp", from: .22, to: .34,
+      cam: [[0, .5, .5, 1.12], [1, .5, .46, 1.9]]},
+    {room: "Foyer",        src: "/assets/tour/04-foyer.webp",    from: .31, to: .48,
+      cam: [[0, .5, .52, 1.0], [1, .52, .55, 1.45]]},
+    {room: "Open concept", src: "/assets/tour/05-living.webp",   from: .45, to: .68,
+      cam: [[0, .4, .55, 1.15], [.5, .5, .52, 1.08], [1, .52, .45, 1.5]]},
+    {room: "Glass doors",  src: "/assets/tour/06-doors.webp",    from: .65, to: .82,
+      cam: [[0, .5, .5, 1.0], [1, .5, .52, 1.7]]},
+    {room: "Backyard",     src: "/assets/tour/07-backyard.webp", from: .79, to: 1,
+      cam: [[0, .55, .62, 1.35], [.6, .52, .55, 1.1], [1, .5, .5, 1.0]],
+      glows: [
+        {x: .52, y: .66, r: .12, c: "255,170,80", flicker: 1},  // fire pit
+        {x: .65, y: .45, r: .2, c: "255,196,120"},              // uplit garden wall
+        {x: .08, y: .3, r: .12, c: "255,214,150"},              // soffit downlights
+      ]},
+  ],
+  // Three reference photos (what is live until the house shots arrive).
   shots: [
     {room: "Exterior", src: "/assets/tour/exterior.webp", from: 0, to: .24,
       cam: [[0, .5, .2, 1.0], [.5, .5, .55, 1.1], [1, .5, .8, 1.42]]},
@@ -99,7 +125,7 @@ const TOUR = {
   }
 
   /* ---------- 3. photo sets with a moving camera ---------- */
-  const shots = (useFrames || useVideo ? [] : TOUR.shots).map((s, i) => {
+  const shots = (useFrames || useVideo ? [] : TOUR.useHouseShots ? TOUR.houseShots : TOUR.shots).map((s, i) => {
     const wrap = document.createElement("div"); wrap.className = "set";
     const img = new Image(); img.alt = ""; img.decoding = "async"; img.src = s.src;
     if (i === 0) img.fetchPriority = "high";
@@ -111,7 +137,8 @@ const TOUR = {
     });
     shotsEl.append(wrap);
     const shot = {...s, wrap, img, glows, w: 0, h: 0};
-    const ready = () => { shot.w = img.naturalWidth; shot.h = img.naturalHeight; layout(); render(shown); };
+    // decode up front so no frame of the scroll ever waits on an image
+    const ready = () => (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => { shot.w = img.naturalWidth; shot.h = img.naturalHeight; layout(); render(shown); });
     if (img.complete && img.naturalWidth) queueMicrotask(ready); else img.addEventListener("load", ready, {once: true});
     return shot;
   });
@@ -163,16 +190,17 @@ const TOUR = {
       const soft = reduce ? 0 : (i < shots.length - 1 ? seg(p, s.to - OVERLAP, s.to) : 0) * 5;
       s.img.style.filter = soft > .2 ? `blur(${soft.toFixed(1)}px)` : "";
       if (s.glows.length) {
-        const lights = smooth(seg(p, .8, .97));
+        const lights = TOUR.useHouseShots ? smooth(seg(p, .84, .98)) : smooth(seg(p, .8, .97));
         s.glows.forEach(g => g.style.opacity = lights.toFixed(3));
       }
     });
 
     // daylight: a bright sun to start, warming through the afternoon, a sunset sky over the backyard
     if (!useFrames && !useVideo) {
-      sun.style.opacity = (1 - smooth(seg(p, .08, .3))).toFixed(3);
-      grade.style.opacity = (smooth(seg(p, .3, .95)) * .5).toFixed(3);
-      dusk.style.opacity = (smooth(seg(p, .7, 1)) * .85).toFixed(3);
+      const H = TOUR.useHouseShots;                              // the house shots carry their own daylight
+      sun.style.opacity = H ? ((1 - smooth(seg(p, .06, .2))) * .6).toFixed(3) : (1 - smooth(seg(p, .08, .3))).toFixed(3);
+      grade.style.opacity = (smooth(seg(p, .3, .95)) * (H ? .18 : .5)).toFixed(3);
+      dusk.style.opacity = (H ? smooth(seg(p, .85, 1)) * .25 : smooth(seg(p, .7, 1)) * .85).toFixed(3);
     }
 
     let on = 0; rooms.forEach((li, i) => { if (p + .02 >= +li.dataset.at) on = i; });
