@@ -5,10 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Gentian | Real Estate in the Greater Toronto Area</title>
 <meta name="description" content="Gentian is a Greater Toronto Area real estate agent helping buyers and sellers move with confidence. Search every home on the MLS® and get a free home evaluation.">
-<meta name="theme-color" content="#f4efe7">
+<meta name="theme-color" content="#f6f2ec">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <link rel="stylesheet" href="/assets/styles.css">
 <link rel="stylesheet" href="/assets/journey.css">
 <link rel="preload" as="image" href="/assets/tour/01-front.webp" fetchpriority="high">
@@ -16,7 +20,7 @@
 <body class="journey-page">
 
 <header class="top fixed">
-  <a class="brand" href="/">Gentian</a>
+  <a class="brand" href="/" aria-label="Gentian Real Estate home"><img src="/assets/brand/logo.svg" alt="Gentian Real Estate" width="132" height="26"></a>
   <nav class="main" aria-label="Main">
     <a href="#about">About</a>
     <a href="#selling">Sell</a>
@@ -24,7 +28,7 @@
     <a href="/search/">Search</a>
     <a href="#contact">Contact</a>
   </nav>
-  <div class="side">Residential<br>Real Estate</div>
+  <div class="side"><a class="btn small" href="#contact">Get in touch</a><button class="menu-btn" type="button" aria-label="Menu" aria-expanded="false"></button></div>
 </header>
 
 <!-- ============ The scroll journey: a sticky full-screen stage, with info panels scrolling over it ============ -->
@@ -44,23 +48,23 @@
   <ol class="rooms" id="rooms" aria-label="Tour progress">
     <li data-at="0">Arrival</li><li data-at=".13">Front door</li><li data-at=".31">Foyer</li><li data-at=".45">Open concept</li><li data-at=".72">Backyard</li>
   </ol>
-  <div class="clock mono" id="clock" aria-hidden="true">10:30 AM</div>
+  <div class="clock" id="clock" aria-hidden="true">10:30 AM</div>
 
   <!-- ============ Info panels (they scroll over the scenes) ============ -->
   <section class="panel hero" style="--at:0">
-    <div class="glass">
-      <p class="eyebrow"><b>01</b> / Arrival</p>
-      <h1>Find your<br>place.</h1>
-      <p class="lede">Gentian · Real estate across Toronto and the GTA. Buying, selling and everything in between.</p>
-      <div class="actions"><a class="btn light" href="/search/">Search homes</a><a class="btn ghost light" href="#contact" data-reason="Home evaluation">What's my home worth?</a></div>
+    <div class="hero-inner" data-reveal>
+      <p class="eyebrow">Real estate across Toronto and the GTA</p>
+      <h1>Find your place.</h1>
+      <p class="lede">Buying, selling and everything in between. Take a walk through, then let's find yours.</p>
+      <div class="actions"><a class="btn light" href="/search/">Search homes</a><a class="link" href="#contact" data-reason="Home evaluation">What's my home worth?</a></div>
     </div>
-    <p class="cue mono">Scroll to step inside ↓</p>
-    <div class="tour-loader mono" id="tour-loader" hidden><span>Loading the tour</span><i></i></div>
+    <p class="cue">Scroll to step inside <span aria-hidden="true">↓</span></p>
+    <div class="tour-loader" id="tour-loader" hidden><span>Loading the tour</span><i></i></div>
   </section>
 
   <section class="panel right" style="--at:.12" id="results">
-    <div class="glass">
-      <p class="eyebrow"><b>02</b> / By the numbers</p>
+    <div class="glass" data-reveal>
+      <p class="eyebrow">By the numbers</p>
       <h2>Results that<br>speak.</h2>
       <!-- PLACEHOLDER: replace with Gentian's real figures -->
       <div class="stats">
@@ -73,8 +77,8 @@
   </section>
 
   <section class="panel" style="--at:.25" id="about">
-    <div class="glass">
-      <p class="eyebrow"><b>03</b> / Welcome in</p>
+    <div class="glass" data-reveal>
+      <p class="eyebrow">Welcome in</p>
       <h2>Hi, I'm<br>Gentian.</h2>
       <!-- PLACEHOLDER bio + photo -->
       <div class="me"><div class="avatar" aria-label="Photo of Gentian coming soon" role="img">G</div><p class="fine">Brokerage name<br>Registered real estate salesperson</p></div>
@@ -84,8 +88,8 @@
   </section>
 
   <section class="panel right" style="--at:.38" id="selling">
-    <div class="glass">
-      <p class="eyebrow"><b>04</b> / Selling</p>
+    <div class="glass" data-reveal>
+      <p class="eyebrow">Selling</p>
       <h2>Sell for more,<br>stress less.</h2>
       <ol class="list">
         <li><b>Pricing from real data.</b> A detailed comparative market analysis, not a guess.</li>
@@ -98,8 +102,8 @@
   </section>
 
   <section class="panel" style="--at:.50" id="buying">
-    <div class="glass">
-      <p class="eyebrow"><b>05</b> / Buying</p>
+    <div class="glass" data-reveal>
+      <p class="eyebrow">Buying</p>
       <h2>Win the<br>right home.</h2>
       <ol class="list">
         <li><b>See it first.</b> Every MLS® listing the moment it goes live, plus coming-soon homes.</li>
@@ -112,8 +116,8 @@
   </section>
 
   <section class="panel right" style="--at:.62" id="sold">
-    <div class="glass">
-      <p class="eyebrow"><b>06</b> / Recently sold</p>
+    <div class="glass" data-reveal>
+      <p class="eyebrow">Recently sold</p>
       <h2>Recent<br>results.</h2>
       <!-- PLACEHOLDER: replace with Gentian's real recent sales -->
       <ul class="sold">
@@ -125,8 +129,8 @@
   </section>
 
   <section class="panel" style="--at:.73" id="areas">
-    <div class="glass">
-      <p class="eyebrow"><b>07</b> / Where I work</p>
+    <div class="glass" data-reveal>
+      <p class="eyebrow">Where I work</p>
       <h2>Know the<br>neighbourhood.</h2>
       <p class="muted">Schools, commutes, what homes really sell for. I'll help you compare every area on your list.</p>
       <ul class="chips"><li>Toronto</li><li>North York</li><li>Etobicoke</li><li>Scarborough</li><li>Mississauga</li><li>Oakville</li><li>Vaughan</li><li>Richmond Hill</li><li>Markham</li></ul>
@@ -134,8 +138,8 @@
   </section>
 
   <section class="panel right" style="--at:.86" id="reviews">
-    <div class="glass">
-      <p class="eyebrow"><b>08</b> / Client stories</p>
+    <div class="glass" data-reveal>
+      <p class="eyebrow">Client stories</p>
       <h2>In their<br>words.</h2>
       <!-- PLACEHOLDER: real client reviews (with permission) -->
       <blockquote><p>"Client review goes here. A sentence or two about what it was like to work with Gentian."</p><cite class="mono">★★★★★ · Client name · Neighbourhood</cite></blockquote>
@@ -144,9 +148,9 @@
   </section>
 
   <section class="panel last" style="--at:1" id="contact">
-    <div class="glass wide">
+    <div class="glass wide" data-reveal>
       <div>
-        <p class="eyebrow"><b>09</b> / Let's talk</p>
+        <p class="eyebrow">Let's talk</p>
         <h2>Your next move<br>starts here.</h2>
         <!-- PLACEHOLDER contact details -->
         <div class="lines mono"><a href="tel:+10000000000">(000) 000-0000</a><a href="mailto:hello@example.com">hello@example.com</a><span class="muted">Toronto &amp; the GTA</span></div>
@@ -172,10 +176,12 @@
 </main>
 
 <footer class="site wrap">
+  <a class="foot-brand" href="/" aria-label="Gentian Real Estate home"><img src="/assets/brand/logo.svg" alt="Gentian Real Estate" width="112" height="22"></a>
   <span>© <span id="yr"></span> Gentian · Real Estate · Brokerage name. Not intended to solicit buyers or sellers currently under contract.</span>
     <span>The trademarks MLS®, Multiple Listing Service® and the associated logos are owned by The Canadian Real Estate Association (CREA).</span>
 </footer>
 
+<script src="/assets/site.js" defer></script>
 <script src="/assets/journey.js" defer></script>
 </body>
 </html>

@@ -7,7 +7,10 @@
 <meta name="description" content="Search every home for sale on the MLS® across the Greater Toronto Area.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
 <link rel="stylesheet" href="/assets/styles.css">
 <style>
 /* Gate */
@@ -16,8 +19,8 @@
 .gate h1{font-size:clamp(40px,6.4vw,92px)}
 .pitch p{color:var(--muted);max-width:50ch;font-size:16.5px}
 .perks{list-style:none;padding:0;margin:12px 0 0;display:grid;border-top:1px solid var(--line)}
-.perks li{display:grid;grid-template-columns:44px 1fr;padding:14px 0;border-bottom:1px solid var(--line)}
-.perks li::before{content:counter(list-item,decimal-leading-zero);font:400 11px/1.9 var(--mono);letter-spacing:.1em;color:var(--muted)}
+.perks li{display:grid;grid-template-columns:38px 1fr;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
+.perks li::before{content:"";width:24px;height:24px;border-radius:50%;margin-top:1px;background:var(--accent-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7.5 12.5l3 3 6-7' fill='none' stroke='%236f5236' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/24px no-repeat}
 .consent{display:flex;gap:12px;align-items:flex-start;font:400 12.5px/1.5 var(--body);text-transform:none;letter-spacing:0;color:var(--muted)}
 .consent input{width:auto;margin-top:3px;flex:none;accent-color:var(--accent)}
 
@@ -49,20 +52,21 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="/">Gentian</a>
+    <a class="brand" href="/" aria-label="Gentian Real Estate home"><img src="/assets/brand/logo.svg" alt="Gentian Real Estate" width="132" height="26"></a>
     <nav class="main" aria-label="Main">
       <a href="/#about">About</a>
-      <a href="/#services">Services</a>
+      <a href="/#selling">Sell</a>
+      <a href="/#buying">Buy</a>
       <a href="/search/" aria-current="page">Search</a>
       <a href="/#contact">Contact</a>
     </nav>
-    <div class="side" id="who">Home<br>Search</div>
+    <div class="side"><span id="who">Home search</span><button class="menu-btn" type="button" aria-label="Menu" aria-expanded="false"></button></div>
   </header>
 
   <!-- STEP 1: sign-up gate -->
   <section class="gate" id="gate">
     <div class="pitch">
-      <p class="eyebrow"><b>01</b> / Search</p>
+      <p class="eyebrow">Search</p>
       <h1>Every home.<br>First look.</h1>
       <p>Create a free account to unlock the full home search. You'll see live listings across the GTA with photos, prices and details, and I'll be one message away if something catches your eye.</p>
       <ul class="perks">
@@ -181,7 +185,7 @@ $("signup").addEventListener("submit", async e => {
   unlock(lead);
 });
 
-$("signout").addEventListener("click", () => { setLead(null); $("search").hidden = true; $("gate").hidden = false; $("who").innerHTML = "Home<br>Search"; });
+$("signout").addEventListener("click", () => { setLead(null); $("search").hidden = true; $("gate").hidden = false; $("who").textContent = "Home search"; });
 
 function unlock(lead){
   $("gate").hidden = true; $("search").hidden = false;
@@ -229,5 +233,6 @@ function render(){
 const saved = getLead();
 if (saved) unlock(saved);
 </script>
+<script src="/assets/site.js" defer></script>
 </body>
 </html>

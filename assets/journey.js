@@ -223,7 +223,9 @@ const TOUR = {
   function measure(){
     const r = journey.getBoundingClientRect(), range = journey.offsetHeight - innerHeight;
     target = clamp(-r.top / range);
-    document.body.classList.toggle("hud-off", r.bottom < innerHeight * .6);
+    document.body.classList.toggle("at-top", target < .03);
+    document.body.classList.toggle("hud-off", r.bottom < innerHeight * .6 ||
+      (innerWidth <= 860 && last.getBoundingClientRect().top < innerHeight * .3));   // the tall contact form on phones
   }
   let raf = 0;
   function tick(){

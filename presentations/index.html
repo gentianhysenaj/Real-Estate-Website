@@ -7,7 +7,10 @@
 <title>Presentations | Gentian Real Estate</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400&family=Inter:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
 <link rel="stylesheet" href="/assets/styles.css">
 <style>
 .pin{max-width:380px;margin:72px auto 0}
@@ -31,9 +34,9 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="/">Gentian</a>
+    <a class="brand" href="/" aria-label="Gentian Real Estate home"><img src="/assets/brand/logo.svg" alt="Gentian Real Estate" width="132" height="26"></a>
     <nav class="main" aria-label="Presentations"><button class="btn ghost small" id="lock" hidden>Lock</button></nav>
-    <div class="side">Presentations<br>Private</div>
+    <div class="side">Private presentations</div>
   </header>
 
   <form class="card pin" id="pinform">
@@ -45,8 +48,8 @@
 
   <section id="home" hidden>
     <div class="picker">
-      <button data-deck="buyer"><span class="eyebrow"><b>01</b> / Presentation</span><h2>Buyer</h2><p>Walk a new buyer through the process, the market and how we'll work together.</p></button>
-      <button data-deck="listing"><span class="eyebrow"><b>02</b> / Presentation</span><h2>Listing</h2><p>Show a seller your pricing approach, marketing plan and track record.</p></button>
+      <button data-deck="buyer"><span class="eyebrow">Presentation</span><h2>Buyer</h2><p>Walk a new buyer through the process, the market and how we'll work together.</p></button>
+      <button data-deck="listing"><span class="eyebrow">Presentation</span><h2>Listing</h2><p>Show a seller your pricing approach, marketing plan and track record.</p></button>
     </div>
   </section>
 
@@ -129,5 +132,6 @@ document.addEventListener("keydown", e => {
 let ok = false; try { ok = sessionStorage.getItem("gh_pres") === "1"; } catch(_){}
 show(ok ? "home" : "pinform");
 </script>
+<script src="/assets/site.js" defer></script>
 </body>
 </html>
