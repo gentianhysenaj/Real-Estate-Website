@@ -15,25 +15,28 @@
 const TOUR = {
   frames: {dir: "/assets/tour/frames/", count: 0, ext: "webp", digits: 4},
   video: "",
-  // Set to true once the seven house shots are in assets/tour/ (01-front.webp ... 07-backyard.webp).
+  // Set to true once the eight house shots are in assets/tour/ (01-front.webp ... 08-backyard.webp).
   useHouseShots: false,
-  // One house, seven AI-generated shots made to match (Canva). The camera keeps moving through each
-  // hand-off, so walking up to the door, through it, across the foyer and out back reads as one move.
+  // One house, eight AI-generated shots made to match (Canva). The camera keeps moving through each
+  // hand-off. Pairs marked seamlessOut/seamlessIn share one camera position, so the front door and the
+  // back doors appear to swing open in place as you scroll.
   houseShots: [
-    {room: "Front",        src: "/assets/tour/01-front.webp",    from: 0,   to: .15,
-      cam: [[0, .5, .5, 1.0], [1, .5, .6, 1.55]]},
-    {room: "Front door",   src: "/assets/tour/02-door.webp",     from: .12, to: .25,
-      cam: [[0, .5, .52, 1.0], [1, .5, .5, 1.16]]},
-    {room: "Door opens",   src: "/assets/tour/03-door-open.webp", from: .22, to: .34,
-      cam: [[0, .5, .5, 1.12], [1, .5, .46, 1.9]]},
-    {room: "Foyer",        src: "/assets/tour/04-foyer.webp",    from: .31, to: .48,
-      cam: [[0, .5, .52, 1.0], [1, .52, .55, 1.45]]},
-    {room: "Open concept", src: "/assets/tour/05-living.webp",   from: .45, to: .68,
-      cam: [[0, .4, .55, 1.15], [.5, .5, .52, 1.08], [1, .52, .45, 1.5]]},
-    {room: "Glass doors",  src: "/assets/tour/06-doors.webp",    from: .65, to: .82,
-      cam: [[0, .5, .5, 1.0], [1, .5, .52, 1.7]]},
-    {room: "Backyard",     src: "/assets/tour/07-backyard.webp", from: .79, to: 1,
-      cam: [[0, .55, .62, 1.35], [.6, .52, .55, 1.1], [1, .5, .5, 1.0]],
+    {room: "Front",            src: "/assets/tour/01-front.webp",         from: 0,   to: .14,
+      cam: [[0, .5, .5, 1.0], [1, .5, .6, 2.0]]},
+    {room: "Front door",       src: "/assets/tour/02-door.webp",          from: .12, to: .25, seamlessOut: true,
+      cam: [[0, .5, .52, 1.0], [1, .5, .5, 1.1]]},
+    {room: "Door opens",       src: "/assets/tour/03-door-open.webp",     from: .20, to: .34, seamlessIn: true,
+      cam: [[0, .5, .5, 1.08], [1, .5, .48, 2.0]]},
+    {room: "Foyer",            src: "/assets/tour/04-foyer.webp",         from: .31, to: .47,
+      cam: [[0, .5, .55, 1.0], [1, .5, .55, 1.4]]},
+    {room: "Open concept",     src: "/assets/tour/05-open-concept.webp",  from: .44, to: .64,
+      cam: [[0, .42, .56, 1.12], [.5, .47, .55, 1.06], [1, .47, .52, 1.45]]},
+    {room: "Back door closed", src: "/assets/tour/06-back-door.webp",     from: .61, to: .77, seamlessOut: true,
+      cam: [[0, .5, .5, 1.0], [1, .5, .5, 1.1]]},
+    {room: "Back door opens",  src: "/assets/tour/07-back-door-open.webp", from: .72, to: .86, seamlessIn: true,
+      cam: [[0, .5, .5, 1.08], [1, .5, .56, 1.8]]},
+    {room: "Backyard",         src: "/assets/tour/08-backyard.webp",      from: .83, to: 1,
+      cam: [[0, .52, .65, 1.35], [.6, .5, .58, 1.1], [1, .5, .5, 1.0]],
       glows: [
         {x: .52, y: .66, r: .12, c: "255,170,80", flicker: 1},  // fire pit
         {x: .65, y: .45, r: .2, c: "255,196,120"},              // uplit garden wall
@@ -164,8 +167,8 @@ const TOUR = {
     // the camera keeps moving through the melt: before/after its range the shot keeps drifting the same way
     const span = s.to - s.from, t = (p - s.from) / span;
     let [x, y, z] = camAt(s.cam, clamp(t));
-    if (t > 1) z *= 1 + (t - 1) * span * 4;                    // keep pushing forward while leaving
-    if (t < 0) z *= 1 / (1 - t * span * 2.5);                  // arrive slightly wide, already moving in
+    if (t > 1 && !s.seamlessOut) z *= 1 + (t - 1) * span * 4;  // keep pushing forward while leaving
+    if (t < 0 && !s.seamlessIn) z *= 1 / (1 - t * span * 2.5);  // arrive slightly wide, already moving in
     if (reduce) z = 1.02;
     z = Math.max(z, 1);
     const hw = W / 2 / (s.bw * z), hh = H / 2 / (s.bh * z);    // never show the photo's edges
@@ -180,17 +183,19 @@ const TOUR = {
     else if (useVideo) { if (video.duration && !video.seeking) video.currentTime = p * (video.duration - .05); }
     else shots.forEach((s, i) => {
       if (!s.bw) return;
+      // each set dissolves in on top of the one before; the one below stays solid until it's covered,
+      // so the background never shows through mid-dissolve
       const fadeIn = i === 0 ? 1 : smooth(seg(p, s.from, s.from + OVERLAP));
-      const fadeOut = i === shots.length - 1 ? 1 : 1 - smooth(seg(p, s.to - OVERLAP, s.to));
-      const o = Math.min(fadeIn, fadeOut);
+      const next = shots[i + 1], covering = next ? seg(p, next.from, next.from + OVERLAP) : 0;
+      const o = covering >= 1 ? 0 : fadeIn;
       s.wrap.style.opacity = o.toFixed(3);
       s.wrap.style.visibility = o > .001 ? "visible" : "hidden";
       if (o > .001) placeShot(s, p);
       // the outgoing set softens as you move past it, so the hand-off reads as motion, not a cut
-      const soft = reduce ? 0 : (i < shots.length - 1 ? seg(p, s.to - OVERLAP, s.to) : 0) * 5;
+      const soft = reduce || s.seamlessOut ? 0 : covering * 5;
       s.img.style.filter = soft > .2 ? `blur(${soft.toFixed(1)}px)` : "";
       if (s.glows.length) {
-        const lights = TOUR.useHouseShots ? smooth(seg(p, .84, .98)) : smooth(seg(p, .8, .97));
+        const lights = TOUR.useHouseShots ? smooth(seg(p, .87, .99)) : smooth(seg(p, .8, .97));
         s.glows.forEach(g => g.style.opacity = lights.toFixed(3));
       }
     });
