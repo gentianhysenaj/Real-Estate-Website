@@ -11,7 +11,7 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/brand/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
-<link rel="stylesheet" href="/assets/styles.css">
+<link rel="stylesheet" href="/assets/styles.css?v=2">
 <style>
 .pin{max-width:380px;margin:72px auto 0}
 .pin input{font:300 32px/1 var(--display);letter-spacing:.5em;text-align:center}
@@ -132,6 +132,6 @@ document.addEventListener("keydown", e => {
 let ok = false; try { ok = sessionStorage.getItem("gh_pres") === "1"; } catch(_){}
 show(ok ? "home" : "pinform");
 </script>
-<script src="/assets/site.js" defer></script>
+<script src="/assets/site.js?v=2" defer></script>
 </body>
 </html>
