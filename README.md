@@ -1,4 +1,4 @@
-# Gentian Real Estate website
+# Gentian Hysenaj Real Estate website
 
 A fast static site, hosted on Netlify (no build step).
 
@@ -25,7 +25,11 @@ The contact form and the home-search sign-up use **Netlify Forms**. Submissions 
 ## Home page scroll tour
 `assets/journey.js` drives the home page: one continuous camera move through one house, from the front in full sun, through the front door into the foyer and the open-concept living space, out the back glass doors to the backyard at sunset as the lights come on.
 - Now: eight AI-generated photos of one house (made in Canva) in `assets/tour/01-front.webp` ... `08-backyard.webp` (`TOUR.shots`). The front door and the back doors open in place as you scroll.
-- Each photo comes in two sizes: `name.webp` (1920 px) loads first for everyone, and `name@2x.webp` (3840 px) is added on large and retina screens. Both are made from AI 4x upscales (`tools/upscale/esrgan_upscale.py`, then `tools/upscale/make_tour_images.py`). The tour is drawn on a canvas straight from these files, so zoomed-in rooms stay crisp.
+- Each photo comes in three files, all made from 8K AI upscales of the original 1920 px images (`tools/upscale/esrgan_upscale.py` with no width, then `tools/upscale/make_tour_images.py`):
+  - `name.webp` (1920 px) loads first for everyone.
+  - `name@2x.webp` (3840 px) is added on large and retina screens.
+  - `name@hd.webp` is the middle half of the photo, full height, at 6144 px across the whole photo. Phones and tall screens only ever see that strip, and desktops see it when the camera pushes in, so it is drawn whenever it covers the whole screen. This is what keeps phones sharp.
+  - Sharper files are fetched only as the camera gets near each room, and decoded only for the rooms around it. The tour is drawn on a canvas straight from these files.
 - The view through the open front door is the foyer photo itself, set in with `tools/compose-doorway.py` (`make_tour_images.py` does this for you), so walking through the door lines up exactly. Re-run it if you replace `03` or `04`.
 - Later: a walk-through video. Cut it into frames with `tools/make-tour-frames.sh` and set `TOUR.frames.count` for a fully seamless, preloaded tour.
 

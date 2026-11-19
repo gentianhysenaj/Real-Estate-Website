@@ -90,18 +90,17 @@ const TOUR = {
     for (let k = 0; k < 6; k++) pump();
   }
   // the stage's own size (100lvh), so phone address bars sliding in and out don't resize anything
-  let VW = innerWidth, VH = innerHeight;
+  let VW = innerWidth, VH = innerHeight, DPR = 1, big = false;
   function sizeCanvas(){
     if (!useFrames && !useShots) return;
     const r = canvas.getBoundingClientRect();
     VW = r.width || innerWidth; VH = r.height || innerHeight;
     let dpr = Math.min(devicePixelRatio || 1, useShots ? 3 : 2);
-    if (useShots) dpr = Math.min(dpr, Math.sqrt(3840 * 2160 / (VW * VH)));   // no point beyond the photos' own detail
+    if (useShots) dpr = Math.min(dpr, Math.sqrt(16e6 / (VW * VH)));   // keep huge screens to about 16 megapixels
     const w = Math.round(VW * dpr), h = Math.round(VH * dpr);
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; lastDrawn = -1; }
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-    // big or high-density screens get the 4K photos (name@2x.webp)
-    if (useShots && !want2x && "createImageBitmap" in window && Math.max(w, h * 16 / 9) * 1.3 > 2100) { want2x = true; fetchHi(); }
+    DPR = dpr; big = Math.max(w, h * 16 / 9) * 1.3 > 2100;      // big or high-density screen
   }
   function drawFrame(p){
     const want = Math.round(p * (F.count - 1));
@@ -130,41 +129,61 @@ const TOUR = {
   // screens the 4K versions are fetched afterwards and decoded just ahead of the camera.
   const useShots = !useFrames && !useVideo && TOUR.shots.length > 0;
   if (useShots) canvas.hidden = false;
-  const V = "?v=2";                                           // bump when photos change under the same name
-  let want2x = false, loLeft = TOUR.shots.length;
+  const V = "?v=3";                                           // bump when photos change under the same name
+  // Sharper files, fetched as the camera gets close and decoded only for the rooms near it:
+  //   name@2x.webp  the whole photo at 3840 px, for big or high-density screens
+  //   name@hd.webp  the middle half of the photo, full height, at 6144 px across the whole photo (from the
+  //                 8K AI upscale). Phones and tall screens only ever see that middle strip, and desktops
+  //                 see it once the camera pushes in, so it is drawn whenever it covers the whole screen.
+  const VARIANTS = [{key: "hd", suffix: "@hd", rect: [.25, 0, .75, 1]}, {key: "hi", suffix: "@2x", rect: [0, 0, 1, 1]}];
+  const FULL = [0, 0, 1, 1], canBitmap = "createImageBitmap" in window;
+  let loLeft = TOUR.shots.length;
   const toBitmap = async src => {
     const img = new Image(); img.decoding = "async";
     if (src === TOUR.shots[0].src) img.fetchPriority = "high";
     img.src = src + V;
     await img.decode();
-    return window.createImageBitmap ? createImageBitmap(img) : img;
+    return canBitmap ? createImageBitmap(img) : img;
   };
   const shots = (useShots ? TOUR.shots : []).map(s => {
     const glows = (s.glows || []).map(g => {
       const el = document.createElement("i"); el.className = "glow" + (g.flicker ? " flicker" : "");
       el.style.setProperty("--c", g.c); shotsEl.append(el); return {...g, el};
     });
-    const shot = {...s, glows, w: 0, h: 0, lo: null, hi: null, hiBlob: null, hiBusy: false, near: false};
+    // furthest the camera zooms on this photo, counting the push forward while it hands over
+    const maxZ = Math.max(...s.cam.map(c => c[3])) * (s.seamlessOut ? 1 : 1.2);
+    const v = Object.fromEntries(VARIANTS.map(d => [d.key, {...d, want: false, blob: null, state: 0, bmp: null, busy: false}]));
+    const shot = {...s, glows, maxZ, v, w: 0, h: 0, lo: null, near: false};
     toBitmap(s.src).then(b => {
       shot.lo = b; shot.w = b.width || b.naturalWidth; shot.h = b.height || b.naturalHeight;
       layout(); render(shown);
-    }).catch(() => {}).finally(() => { if (--loLeft === 0) fetchHi(); });
+    }).catch(() => {}).finally(() => { if (--loLeft === 0) sharpen(shown); });
     return shot;
   });
-  function fetchHi(){
-    if (!want2x || loLeft > 0) return;                        // the 1920 set always comes first
-    shots.forEach(s => { if (!s.hiBlob) fetch(s.src.replace(/\.webp$/, "@2x.webp") + V).then(r => r.ok ? r.blob() : null)
-      .then(b => { s.hiBlob = b; sharpen(shown); }).catch(() => {}); });
+  // which sharper files this screen can use for a shot
+  function wants(s){
+    if (!canBitmap) return;
+    const stripZ = 2 * VW / s.bw;                              // zoom at which the middle strip fills the width
+    s.v.hd.want = s.maxZ >= stripZ && s.bw * DPR * s.maxZ > 4400;   // and the 4K photo would be stretched
+    s.v.hi.want = big && !(s.v.hd.want && stripZ <= 1.02);    // not needed where the strip always covers
   }
-  // keep the 4K version decoded only for the rooms near the camera, to stay light on phones
   function sharpen(p){
+    if (loLeft > 0) return;                                    // the 1920 set always comes first
     shots.forEach(s => {
+      const soon = p > s.from - .2 && p < s.to + .08;
       s.near = p > s.from - .1 && p < s.to + .05;
-      if (s.near && s.hiBlob && !s.hi && !s.hiBusy) {
-        s.hiBusy = true;
-        createImageBitmap(s.hiBlob).then(b => { s.hiBusy = false; if (s.near) { s.hi = b; render(shown); } else b.close(); })
-          .catch(() => { s.hiBusy = false; s.hiBlob = null; });
-      } else if (!s.near && s.hi) { s.hi.close(); s.hi = null; }
+      Object.values(s.v).forEach(v => {
+        if (v.want && soon && !v.state) {
+          v.state = 1;
+          fetch(s.src.replace(/\.webp$/, v.suffix + ".webp") + V).then(r => r.ok ? r.blob() : null)
+            .then(b => { v.blob = b; v.state = b ? 2 : -1; if (b) sharpen(shown); }).catch(() => { v.state = -1; });
+        }
+        if (s.near && v.want && v.blob && !v.bmp && !v.busy) {
+          v.busy = true;
+          createImageBitmap(v.blob).then(b => { v.busy = false; if (s.near && v.want) { v.bmp = b; render(shown); } else b.close(); })
+            .catch(() => { v.busy = false; v.blob = null; v.state = -1; });
+        } else if ((!s.near || !v.want) && v.bmp) { v.bmp.close(); v.bmp = null; }
+      });
     });
   }
   function layout(){
@@ -172,7 +191,9 @@ const TOUR = {
       if (!s.w) return;
       const c = Math.max(VW / s.w, VH / s.h);                  // "cover" size at zoom 1
       s.bw = s.w * c; s.bh = s.h * c;
+      wants(s);
     });
+    sharpen(shown);
   }
   function camAt(cam, t){
     for (let i = 1; i < cam.length; i++) if (t <= cam[i][0]) {
@@ -233,13 +254,22 @@ const TOUR = {
     let first = 0; layers.forEach(([, , o], j) => { if (o >= .999) first = j; });
     if (!layers.length || layers[first][2] < .999) { ctx.globalAlpha = 1; ctx.fillStyle = "#d9cfc1"; ctx.fillRect(0, 0, cw, ch); }
     for (const [s, [x, y, z], o] of layers.slice(first)) {
-      const src = s.hi || s.lo, iw = src.width || src.naturalWidth, ih = src.height || src.naturalHeight;
+      // where the whole photo sits on the canvas (device pixels)
       const dw = s.bw * z * k, dh = s.bh * z * k, dx = (VW / 2 - x * s.bw * z) * k, dy = (VH / 2 - y * s.bh * z) * k;
-      // only the part of the photo that's on screen
-      const sx = Math.max(0, -dx / dw * iw), sy = Math.max(0, -dy / dh * ih);
-      const sw = Math.min(iw - sx, cw / dw * iw), sh = Math.min(ih - sy, ch / dh * ih);
+      // the sharpest file that covers the whole screen: the close-up strip, then the 4K photo, then 1920
+      let src = s.lo, r = FULL;
+      for (const v of [s.v.hd, s.v.hi]) {
+        if (!v.bmp) continue;
+        const [x0, y0, x1, y1] = v.rect;
+        if (dx + x0 * dw <= .5 && dx + x1 * dw >= cw - .5 && dy + y0 * dh <= .5 && dy + y1 * dh >= ch - .5) { src = v.bmp; r = v.rect; break; }
+      }
+      const iw = src.width || src.naturalWidth, ih = src.height || src.naturalHeight;
+      const ex = dx + r[0] * dw, ey = dy + r[1] * dh, ew = (r[2] - r[0]) * dw, eh = (r[3] - r[1]) * dh;
+      // only the part of that file that's on screen
+      const sx = Math.max(0, -ex / ew * iw), sy = Math.max(0, -ey / eh * ih);
+      const sw = Math.min(iw - sx, cw / ew * iw), sh = Math.min(ih - sy, ch / eh * ih);
       ctx.globalAlpha = o;
-      ctx.drawImage(src, sx, sy, sw, sh, dx + sx / iw * dw, dy + sy / ih * dh, sw / iw * dw, sh / ih * dh);
+      ctx.drawImage(src, sx, sy, sw, sh, ex + sx / iw * ew, ey + sy / ih * eh, sw / iw * ew, sh / ih * eh);
     }
     ctx.globalAlpha = 1;
   }
