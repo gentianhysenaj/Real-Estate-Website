@@ -10,6 +10,7 @@ OUT = sys.argv[1]
 os.makedirs(OUT, exist_ok=True)
 F = "/usr/share/fonts/opentype/inter/"
 INK, BRONZE, CREAM, BRONZE_D = "#2b251f", "#8a6a48", "#f4efe7", "#c9a37a"
+NAME, LABEL = "GENTIAN HYSENAJ", "Gentian Hysenaj Real Estate"   # wordmark (Gentian asked for the full name, 2026-11-19)
 
 def svg(w, h, body, title, extra=""):
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w:.1f} {h:.1f}" width="{w:.0f}" height="{h:.0f}" '
@@ -79,14 +80,14 @@ def word(text, font, size, track, x, base, c):
 def lockup(key, fg, accent):
     m, mw = MARKS[key](fg, accent)
     gap = 20
-    a, w1 = word("GENTIAN", "InterDisplay-Medium.otf", 27, .26, mw + gap, 40, fg)
+    a, w1 = word(NAME, "InterDisplay-Medium.otf", 27, .26, mw + gap, 40, fg)
     b, w2 = word("REAL ESTATE", "Inter-Medium.otf", 9, .52, mw + gap + 1, 58, accent)
     return m + a + b, mw + gap + max(w1, w2) + 2, 64
 
 def compact(key, fg, accent):
     m, mw = MARKS[key](fg, accent, **({} if key == "solid" else {"sw": 4.4 if key != "doorway" else 3.2}))
     sc = 32 / 64
-    a, w = word("GENTIAN", "InterDisplay-Medium.otf", 19.5, .24, mw * sc + 12, 24.5, fg)
+    a, w = word(NAME, "InterDisplay-Medium.otf", 19.5, .24, mw * sc + 12, 24.5, fg)
     return f'<g transform="scale({sc})">{m}</g>' + a, mw * sc + 12 + w + 1, 32
 
 def icon(key, fg, accent, bg, size=64, radius=0, sw=None):
@@ -98,15 +99,41 @@ def icon(key, fg, accent, bg, size=64, radius=0, sw=None):
     rect = f'<rect width="{size}" height="{size}" rx="{radius}" fill="{bg}"/>' if bg else ""
     return svg(size, size, rect + inner, "Gentian")
 
+def compact_animated(fg):
+    """Header logo that writes itself once: the G from its top terminal round to the bar, the bar on through
+    the H, then the H's left and right stems, ending at the bottom of the H; then the name wipes in."""
+    sc, sw = 32 / 64, 4.4
+    cx, cy, r = 26, 32, 23
+    a = math.radians(50)
+    sx, sy = cx + r * math.cos(a), cy - r * math.sin(a)
+    # (path, start s, duration s): durations follow each stroke's length so the pen moves at one speed
+    strokes = [(f"M{sx:.2f} {sy:.2f} A{r} {r} 0 1 0 {cx + r} {cy}", .30, .66),
+               ("M31 32 H73", 1.02, .24), ("M49 9 V55", 1.32, .26), ("M73 9 V55", 1.64, .26)]
+    paths = "".join(f'<path class="s" pathLength="1" style="animation-delay:{t}s;animation-duration:{d}s" d="{p}"/>'
+                    for p, t, d in strokes)
+    x0 = 76 * sc + 12
+    text, w = word(NAME, "InterDisplay-Medium.otf", 19.5, .24, x0, 24.5, fg)
+    style = ('<style>.s{fill:none;stroke:%s;stroke-width:%s;stroke-linecap:square;stroke-dasharray:1 1;'
+             'stroke-dashoffset:1;opacity:0;animation:w 1s cubic-bezier(.45,0,.3,1) both}'
+             '@keyframes w{0%%{stroke-dashoffset:1;opacity:0}1%%{opacity:1}to{stroke-dashoffset:0;opacity:1}}'
+             '@media (prefers-reduced-motion:reduce){.s{animation:none;stroke-dashoffset:0;opacity:1}}</style>') % (fg, sw)
+    wipe = (f'<clipPath id="wipe"><rect x="{x0 - 2}" y="0" width="0" height="32">'
+            f'<animate attributeName="width" from="0" to="{w + 4:.1f}" begin="1.55s" dur=".8s" fill="freeze" '
+            'calcMode="spline" keyTimes="0;1" keySplines=".4 0 .2 1"/></rect></clipPath>')
+    body = f'<defs>{wipe}</defs><g transform="scale({sc})">{paths}</g><g clip-path="url(#wipe)">{text}</g>'
+    return svg(x0 + w + 1, 32, body, LABEL, style)
+
+open(f"{OUT}/ligature-compact-animated.svg", "w").write(compact_animated(INK))
+
 FAV_SW = {"ligature": 6, "house": 6, "doorway": 4.4, "solid": None}
 for key in MARKS:
     for tone, fg, acc in (("light", INK, BRONZE), ("dark", CREAM, BRONZE_D)):
         body, w, h = lockup(key, fg, acc)
-        open(f"{OUT}/{key}-lockup-{tone}.svg", "w").write(svg(w, h, body, f"Gentian Real Estate logo, {NAMES[key]}"))
+        open(f"{OUT}/{key}-lockup-{tone}.svg", "w").write(svg(w, h, body, f"{LABEL} logo, {NAMES[key]}"))
         m, mw = MARKS[key](fg, acc)
         open(f"{OUT}/{key}-mark-{tone}.svg", "w").write(svg(mw, 64, m, f"Gentian mark, {NAMES[key]}"))
         body, w, h = compact(key, fg, acc)
-        open(f"{OUT}/{key}-compact-{tone}.svg", "w").write(svg(w, h, body, "Gentian Real Estate"))
+        open(f"{OUT}/{key}-compact-{tone}.svg", "w").write(svg(w, h, body, LABEL))
     open(f"{OUT}/{key}-icon.svg", "w").write(icon(key, INK, BRONZE, CREAM, 64, 14, FAV_SW[key] and FAV_SW[key] * .8))
     open(f"{OUT}/{key}-icon-square.svg", "w").write(icon(key, INK, BRONZE, CREAM, 64, 0, FAV_SW[key] and FAV_SW[key] * .8))
     dark = '<style>@media (prefers-color-scheme:dark){[stroke="#2b251f"]{stroke:#f4efe7}[fill="#2b251f"]{fill:#f4efe7}}</style>'
