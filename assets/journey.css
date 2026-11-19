@@ -197,7 +197,8 @@ footer.site{color:var(--muted)}
 
 /* net proceeds calculator */
 .calc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(16px,2.4vw,28px);align-items:start}
-.calc-in{grid-template-columns:1fr 1fr;gap:18px}
+.calc-in{grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.calc-in .field{align-content:start}
 .calc-in .fine{margin-top:2px}
 .money,.pct{position:relative}
 .money::before{content:"$";position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
