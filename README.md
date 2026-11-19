@@ -13,7 +13,8 @@ A fast static site, hosted on Netlify (no build step).
 The contact form and the home-search sign-up use **Netlify Forms**. Submissions show in the Netlify dashboard under *Forms*, and you can turn on email notifications there.
 
 ## Placeholders to replace
-- Brokerage, photo, bio, stats, recent sales, rating and reviews, phone, email, Instagram and WhatsApp in `index.html` (search for `PLACEHOLDER`), plus the footer on every page
+- Stats, recent sales and client reviews in `index.html` (search for `PLACEHOLDER`). The review cards are hidden until real ones are added: remove `hidden` from `#rev-track` and `.arrows`.
+- Done: brokerage (Royal LePage Pinnacle Real Estate, Brokerage), headshot (`assets/img/gentian-avatar.webp`, `gentian-portrait.webp`), phone, email, Instagram, WhatsApp click-to-chat (`wa.me` link with a ready-made first message) and the Google reviews link.
 - Home prep slider photos: `assets/img/prep-before.webp` and `prep-after.webp` (a sample until real before/after photos are in)
 - Slide content in `presentations/index.html` (`DECKS`)
 - PIN: `PIN_HASH` in `presentations/index.html` (SHA-256 of the PIN)

@@ -85,7 +85,7 @@ footer.site .foot-brand img{height:22px;width:auto;margin-bottom:12px;opacity:.9
 footer.site>.wrap{width:100%}
 .foot{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px}
 .foot b{display:block;color:var(--ink);font-size:13px;font-weight:600;margin-bottom:10px}
-.foot a,.foot span{display:block;width:fit-content;color:var(--muted);text-decoration:none;padding:3px 0;font-size:13.5px}
+.foot a,.foot span{display:block;width:fit-content;max-width:100%;overflow-wrap:anywhere;color:var(--muted);text-decoration:none;padding:3px 0;font-size:13.5px}
 .foot a:hover{color:var(--ink)}
 .legal{display:grid;gap:6px;font-size:12px;border-top:1px solid var(--line);padding-top:20px}
 .soft{color:var(--muted)}

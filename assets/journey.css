@@ -98,6 +98,7 @@ header.top.fixed{position:fixed;inset:0 0 auto 0;z-index:20;border:0;padding-inl
 
 .me{display:flex;gap:16px;align-items:center}
 .avatar{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);font-size:24px;font-weight:600;color:var(--accent-strong)}
+img.avatar{display:block;flex:none;width:76px;height:76px;object-fit:cover;background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.7),0 10px 24px -14px rgba(40,28,16,.5)}
 
 .list{list-style:none;margin:0;padding:0;counter-reset:n;display:grid;border-top:1px solid var(--rule)}
 .list li{counter-increment:n;position:relative;padding:14px 0 14px 38px;border-bottom:1px solid var(--rule);font-size:15.5px;line-height:1.45;color:var(--muted)}
@@ -256,7 +257,13 @@ footer.site{color:var(--muted)}
 .facts div+div{padding-left:14px;border-left:1px solid var(--line)}
 .facts dt{font-size:13px;color:var(--muted)}
 .facts dd{margin:0;font-weight:500;font-size:15px}
-.agent{gap:16px;padding:22px}
+.agent{grid-template-columns:clamp(120px,32%,168px) minmax(0,1fr);gap:22px;padding:20px;align-items:center}
+.agent .portrait{display:block;border-radius:16px;overflow:hidden;background:var(--surface-2);isolation:isolate}
+.agent .portrait img{display:block;width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;mix-blend-mode:multiply}
+.agent-body{display:grid;gap:14px;min-width:0}
+.agent .name{font-size:19px;font-weight:600;letter-spacing:-.02em}
+.agent .fine{margin-top:4px}
+.agent .lines a{overflow-wrap:anywhere}
 .agent .lines{display:grid;gap:8px}
 .agent .lines a{color:var(--ink);text-decoration:none;font-weight:500}
 .agent .lines a:hover{color:var(--accent-strong)}
@@ -306,6 +313,8 @@ footer.site{color:var(--muted)}
   .sold-list .n{display:none}
   .sold-list .thumb{width:64px;height:48px}
   .facts{grid-template-columns:1fr}
+  .agent{grid-template-columns:1fr}
+  .agent .portrait{width:132px}
   .facts div+div{padding-left:0;border-left:0;border-top:1px solid var(--line)}
   .rev-track{grid-auto-columns:86%}
   .rev-side{width:100%;justify-content:space-between}
