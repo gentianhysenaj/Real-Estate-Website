@@ -290,5 +290,4 @@ const TOUR = {
     const range = journey.offsetHeight - innerHeight;
     scrollTo({top: journey.offsetTop + range * (+li.dataset.at + .02), behavior: reduce ? "auto" : "smooth"});
   }));
-  document.querySelectorAll("[data-reason]").forEach(a => a.addEventListener("click", () => { const s = $("c-reason"); if (s) s.value = a.dataset.reason; }));
 })();

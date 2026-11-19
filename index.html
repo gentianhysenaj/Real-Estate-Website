@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Gentian | Real Estate in the Greater Toronto Area</title>
-<meta name="description" content="Gentian is a Greater Toronto Area real estate agent helping buyers and sellers move with confidence. Search every home on the MLS® and get a free home evaluation.">
+<title>Gentian | Real Estate in Toronto and the GTA</title>
+<meta name="description" content="Gentian is a Greater Toronto Area real estate agent. Thoughtful pricing, standout marketing and steady negotiation for buyers and sellers, plus a free home evaluation and every MLS® listing.">
 <meta name="theme-color" content="#f6f2ec">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,8 +13,8 @@
 <link rel="icon" href="/assets/brand/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="/assets/styles.css?v=3">
-<link rel="stylesheet" href="/assets/journey.css?v=3">
+<link rel="stylesheet" href="/assets/styles.css?v=4">
+<link rel="stylesheet" href="/assets/journey.css?v=4">
 <link rel="preload" as="image" href="/assets/tour/01-front.webp?v=2" fetchpriority="high">
 </head>
 <body class="journey-page">
@@ -22,18 +22,23 @@
 <header class="top fixed">
   <a class="brand" href="/" aria-label="Gentian Real Estate home"><img src="/assets/brand/logo.svg" alt="Gentian Real Estate" width="132" height="26"></a>
   <nav class="main" aria-label="Main">
-    <a href="#about">About</a>
-    <a href="#selling">Sell</a>
-    <a href="#buying">Buy</a>
+    <a href="#sold">Sold</a>
+    <a href="#selling">Selling</a>
+    <a href="#contact" data-reason="Home value">Home value</a>
+    <a href="#buying">Buying</a>
     <a href="/search/">Search</a>
-    <a href="#contact">Contact</a>
+    <a href="#reviews">Reviews</a>
+    <a href="#about">About</a>
+    <a class="menu-only" href="#journal">Journal</a>
+    <a class="menu-only" href="/presentations/">Presentations</a>
   </nav>
-  <div class="side"><a class="btn small" href="#contact">Get in touch</a><button class="menu-btn" type="button" aria-label="Menu" aria-expanded="false"></button></div>
+  <div class="side"><a class="btn small" href="#contact">Let's talk</a><button class="menu-btn" type="button" aria-label="Menu" aria-expanded="false"></button></div>
 </header>
 
 <!-- ============ The scroll journey: a sticky full-screen stage, with info panels scrolling over it ============ -->
-<main class="journey" id="journey">
-  <!-- The stage: real photos of a home (or a walk-through video, see TOUR in assets/journey.js), driven by scroll -->
+<main>
+<div class="journey" id="journey">
+  <!-- The stage: photos of one home (or a walk-through video, see TOUR in assets/journey.js), driven by scroll -->
   <div class="stage" aria-hidden="true">
     <canvas class="tour-canvas" id="tour-canvas" hidden></canvas>
     <div class="shots" id="shots"></div>
@@ -50,19 +55,60 @@
   </ol>
   <div class="clock" id="clock" aria-hidden="true">10:30 AM</div>
 
-  <!-- ============ Info panels (they scroll over the scenes) ============ -->
+  <!-- ============ Panels that scroll over the walk-through ============ -->
   <section class="panel hero" style="--at:0">
     <div class="hero-inner" data-reveal>
-      <p class="eyebrow">Real estate across Toronto and the GTA</p>
+      <p class="eyebrow">Brokerage name · Toronto and the GTA</p>
       <h1>Find your place.</h1>
-      <p class="lede">Buying, selling and everything in between. Take a walk through, then let's find yours.</p>
-      <div class="actions"><a class="btn light" href="/search/">Search homes</a><a class="link" href="#contact" data-reason="Home evaluation">What's my home worth?</a></div>
+      <p class="lede">Thoughtful pricing, standout marketing and steady negotiation, for buyers and sellers. Take a walk through, then let's talk.</p>
+      <div class="actions"><a class="btn light" href="#contact" data-reason="Selling">Book a strategy call</a><a class="link" href="#sold">See recent sales</a></div>
     </div>
     <p class="cue">Scroll to step inside <span aria-hidden="true">↓</span></p>
     <div class="tour-loader" id="tour-loader" hidden><span>Loading the tour</span><i></i></div>
   </section>
 
-  <section class="panel right" style="--at:.12" id="results">
+  <section class="panel right" style="--at:.14" id="about">
+    <div class="glass" data-reveal>
+      <p class="eyebrow">Gentian · Brokerage name</p>
+      <h2>Hi, I'm<br>Gentian.</h2>
+      <!-- PLACEHOLDER: photo, brokerage and bio -->
+      <div class="me"><div class="avatar" aria-label="Photo of Gentian coming soon" role="img">G</div><p class="fine">Brokerage name<br>Registered real estate salesperson</p></div>
+      <p>I help families across the Greater Toronto Area sell well and buy with confidence. You get honest advice, real numbers and someone who answers the phone.</p>
+      <p class="muted">First condo, more room for a growing family or the house you've loved for decades: I'll give you a clear plan and see it through to closing day.</p>
+      <div class="actions"><a class="btn light" href="#contact" data-reason="Home value">What's my home worth?</a><a class="link" href="#contact">Get in touch</a></div>
+    </div>
+  </section>
+
+  <section class="panel" style="--at:.31" id="approach">
+    <div class="glass xwide" data-reveal>
+      <div class="pillars-head">
+        <p class="eyebrow">How I sell</p>
+        <h2>Three things that move your price.</h2>
+      </div>
+      <div class="pillars">
+        <div><h3>Pricing with a plan</h3><p>Set from recent sales nearby and the homes buyers are comparing yours to, so serious buyers book in the first week.</p></div>
+        <div><h3>Marketing that gets seen</h3><p>Staging advice, professional photos and video, and a launch across the MLS®, social media and my buyer list.</p></div>
+        <div><h3>Negotiation you can trust</h3><p>Every offer reviewed line by line, a firm push on price and terms, and you're kept informed at each step.</p></div>
+      </div>
+      <a class="link" href="#selling">See my selling plan</a>
+    </div>
+  </section>
+
+  <section class="panel right" style="--at:.48" id="buying">
+    <div class="glass" data-reveal>
+      <p class="eyebrow">Buying</p>
+      <h2>Win the<br>right home.</h2>
+      <ol class="list">
+        <li><b>See it first.</b> Every MLS® listing the moment it goes live, plus homes before they hit the market.</li>
+        <li><b>Know the numbers.</b> Budget, closing costs and land transfer tax, worked out before you shop.</li>
+        <li><b>Honest opinions.</b> What I'd do, at every showing.</li>
+        <li><b>Offers that land.</b> A plan for bidding wars, and conditions that keep you safe.</li>
+      </ol>
+      <a class="btn light" href="/search/">Start your home search</a>
+    </div>
+  </section>
+
+  <section class="panel" style="--at:.66" id="results">
     <div class="glass" data-reveal>
       <p class="eyebrow">By the numbers</p>
       <h2>Results that<br>speak.</h2>
@@ -76,112 +122,295 @@
     </div>
   </section>
 
-  <section class="panel" style="--at:.25" id="about">
-    <div class="glass" data-reveal>
-      <p class="eyebrow">Welcome in</p>
-      <h2>Hi, I'm<br>Gentian.</h2>
-      <!-- PLACEHOLDER bio + photo -->
-      <div class="me"><div class="avatar" aria-label="Photo of Gentian coming soon" role="img">G</div><p class="fine">Brokerage name<br>Registered real estate salesperson</p></div>
-      <p>I help buyers and sellers across the Greater Toronto Area make one of the biggest decisions of their lives with clear advice, honest numbers and a lot of local knowledge.</p>
-      <p class="muted">You'll get quick answers, careful negotiation and no pressure, whether it's your first condo, a move up for a growing family or selling the house you've loved for years.</p>
+  <section class="panel hero finale last" style="--at:1">
+    <div class="hero-inner" data-reveal>
+      <p class="eyebrow">Thanks for walking through</p>
+      <h2>Welcome home.</h2>
+      <p class="lede">Whether you're moving in or moving on, let's make your next move a good one.</p>
+      <div class="actions"><a class="btn light" href="#contact">Let's talk</a><a class="link" href="/search/">Search homes</a></div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ The rest of the page ============ -->
+<div class="after">
+
+  <section class="marquee" aria-label="Where I work">
+    <div class="rows" aria-hidden="true">
+      <div class="track"><span>Toronto</span><span>North York</span><span>Etobicoke</span><span>Scarborough</span><span>Mississauga</span><span>Oakville</span><span>Vaughan</span><span>Richmond Hill</span><span>Markham</span><span>Toronto</span><span>North York</span><span>Etobicoke</span><span>Scarborough</span><span>Mississauga</span><span>Oakville</span><span>Vaughan</span><span>Richmond Hill</span><span>Markham</span></div>
+      <div class="track rev"><span>Markham</span><span>Richmond Hill</span><span>Vaughan</span><span>Oakville</span><span>Mississauga</span><span>Scarborough</span><span>Etobicoke</span><span>North York</span><span>Toronto</span><span>Markham</span><span>Richmond Hill</span><span>Vaughan</span><span>Oakville</span><span>Mississauga</span><span>Scarborough</span><span>Etobicoke</span><span>North York</span><span>Toronto</span></div>
+    </div>
+    <p class="wrap marquee-note">Buying and selling across Toronto, North York, Etobicoke, Scarborough, Mississauga, Oakville, Vaughan, Richmond Hill and Markham.</p>
+  </section>
+
+  <!-- Recently sold -->
+  <section class="block" id="sold">
+    <div class="wrap">
+      <div class="sec-head" data-reveal>
+        <div><p class="eyebrow">Recently sold</p><h2>Recent sales. <span class="soft">Every one with a plan.</span></h2></div>
+        <p class="lede">A few of my recent sales across the GTA. Ask me about any of them, or about what's selling on your street.</p>
+      </div>
+      <div class="sold-grid">
+        <div class="sold-stat card" data-reveal>
+          <!-- PLACEHOLDER: real total -->
+          <strong>00+</strong>
+          <span>homes sold across the GTA. Call me for details on any sale, including ones on your street.</span>
+          <div class="actions"><a class="btn" href="#contact">Ask about a recent sale</a><a class="link" href="/search/">Homes for sale</a></div>
+        </div>
+        <!-- PLACEHOLDER: replace each row with a real sale (photo, address, city, result) -->
+        <ol class="sold-list" data-reveal>
+          <li><span class="n">01</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Toronto</span></span><span class="res"><span class="tag">Sold</span><span>00% of asking</span></span></li>
+          <li><span class="n">02</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Etobicoke</span></span><span class="res"><span class="tag">Sold</span><span>00 days on market</span></span></li>
+          <li><span class="n">03</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, North York</span></span><span class="res"><span class="tag">Sold</span><span>Multiple offers</span></span></li>
+          <li><span class="n">04</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Mississauga</span></span><span class="res"><span class="tag">Sold</span><span>00% of asking</span></span></li>
+          <li><span class="n">05</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Vaughan</span></span><span class="res"><span class="tag">Sold</span><span>00 days on market</span></span></li>
+          <li><span class="n">06</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Oakville</span></span><span class="res"><span class="tag">Sold</span><span>Over asking</span></span></li>
+        </ol>
+      </div>
     </div>
   </section>
 
-  <section class="panel right" style="--at:.38" id="selling">
-    <div class="glass" data-reveal>
-      <p class="eyebrow">Selling</p>
-      <h2>Sell for more,<br>stress less.</h2>
-      <ol class="list">
-        <li><b>Pricing from real data.</b> A detailed comparative market analysis, not a guess.</li>
-        <li><b>Prepared to impress.</b> Staging advice, small fixes that pay off, and a pre-listing inspection when it helps.</li>
-        <li><b>Marketed everywhere.</b> Professional photos, video and floor plans on the MLS®, social media and my buyer network.</li>
-        <li><b>Negotiated hard.</b> Offer-night strategy that protects your bottom line.</li>
+  <!-- Preparing the home -->
+  <section class="block" id="prep">
+    <div class="wrap prep">
+      <div class="prep-copy" data-reveal>
+        <p class="eyebrow">Preparing your home</p>
+        <h2>Homes sell on how they feel.</h2>
+        <p class="lede">Buyers form an opinion online long before they walk in. A little preparation changes that first impression, and I'll organise it for you.</p>
+        <ul class="points">
+          <li><b>Online first</b><span>Nearly every buyer starts on a screen. Bright, well-shot rooms are what earn the showing.</span></li>
+          <li><b>Easy to picture</b><span>Simple staging shows how each room works and how much space there really is.</span></li>
+          <li><b>Better offers</b><span>A home that looks cared for gives buyers confidence, and confident buyers pay more.</span></li>
+        </ul>
+      </div>
+      <figure class="compare" data-reveal>
+        <div class="compare-frame" id="compare" style="--pos:50%">
+          <img src="/assets/img/prep-after.webp" alt="The open-concept living room, prepared and professionally photographed" width="1600" height="1000" loading="lazy">
+          <img class="before" src="/assets/img/prep-before.webp" alt="The same room in a quick, unedited phone photo" width="1600" height="1000" loading="lazy">
+          <span class="lab l">Before</span><span class="lab r">After</span>
+          <span class="handle" aria-hidden="true"><i>‹ ›</i></span>
+          <input type="range" min="0" max="100" value="50" step=".5" aria-label="Compare before and after">
+        </div>
+        <figcaption class="fine">Sample room: a quick phone photo, then the same room prepared and professionally shot. Drag to compare.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- Selling plan -->
+  <section class="block" id="selling">
+    <div class="wrap">
+      <div class="sec-head" data-reveal>
+        <div><p class="eyebrow">Selling</p><h2>A plan for any market.</h2></div>
+        <p class="lede">There's no one-size plan. I'll look at your street and the market the week we list, recommend a strategy and explain exactly why.</p>
+      </div>
+      <div class="seg" role="tablist" aria-label="Market conditions" data-reveal>
+        <button role="tab" id="t-busy" aria-controls="p-busy" aria-selected="true">Busy market</button>
+        <button role="tab" id="t-slow" aria-controls="p-slow" aria-selected="false" tabindex="-1">Slower market</button>
+      </div>
+      <div class="plan" id="p-busy" role="tabpanel" aria-labelledby="t-busy">
+        <div class="plan-head"><p class="kicker">When buyers are competing</p><h3>Create urgency, then choose the best offer.</h3><p class="muted">When homes are moving fast, the goal is to bring as many qualified buyers to the table at the same time as possible.</p></div>
+        <ol class="steps">
+          <li><b>The right list price</b><span>Priced to attract the largest group of qualified buyers, using fresh comparable sales.</span></li>
+          <li><b>A quiet launch, then a big debut</b><span>A heads-up to my buyer list and local agents in the days before the listing goes live.</span></li>
+          <li><b>A clear offer date</b><span>When it suits the market, a set date for offers gives every buyer time to view and get ready.</span></li>
+          <li><b>Competition works for you</b><span>With several buyers interested, each offer is used to improve price, deposit and conditions.</span></li>
+          <li><b>Early offers, handled well</b><span>If a buyer tries to jump the line, we weigh it against what offer day is likely to bring.</span></li>
+          <li><b>Calm to the finish</b><span>Steady negotiation on price, closing date and inclusions until everything is signed.</span></li>
+        </ol>
+      </div>
+      <div class="plan" id="p-slow" role="tabpanel" aria-labelledby="t-slow" hidden>
+        <div class="plan-head"><p class="kicker">When buyers have choices</p><h3>Stand out, then negotiate with patience.</h3><p class="muted">When listings sit longer, buyers take their time. Your home needs to look like the best option, with a clear pricing strategy behind it.</p></div>
+        <ol class="steps">
+          <li><b>Be the best on the street</b><span>Preparation, staging and photography count for even more when buyers are comparing.</span></li>
+          <li><b>Price with a strategy</b><span>A list price with room built in and limits agreed ahead of time, so every counter is planned.</span></li>
+          <li><b>Follow up every showing</b><span>Feedback from every buyer's agent, so we know exactly what's working and what isn't.</span></li>
+          <li><b>Defend your value</b><span>Counter-offers that protect your price instead of giving it away a little at a time.</span></li>
+          <li><b>Terms that keep the deal</b><span>Deposits, conditions and dates written so a firm deal stays firm.</span></li>
+          <li><b>Decide with data</b><span>Any change is based on showings, feedback and new sales, never on worry.</span></li>
+        </ol>
+      </div>
+      <div class="plan-foot" data-reveal>
+        <p class="muted">Buying instead? I bring the same strategy to your side of the table, so you know what the seller is likely to do next.</p>
+        <div class="actions"><a class="btn" href="#contact" data-reason="Selling">Get your selling plan</a><a class="link" href="#buying">Buying with me</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Net proceeds calculator -->
+  <section class="block" id="proceeds">
+    <div class="wrap">
+      <div class="sec-head" data-reveal>
+        <div><p class="eyebrow">Net proceeds</p><h2>Estimate what you'd keep.</h2></div>
+        <p class="lede">Change any number to see roughly what lands in your account after the mortgage, commission and closing costs.</p>
+      </div>
+      <div class="calc" id="calc">
+        <form class="card calc-in" data-reveal onsubmit="return false">
+          <div class="field"><label for="k-price">Sale price</label><div class="money"><input id="k-price" inputmode="numeric" value="1,200,000"></div></div>
+          <div class="field"><label for="k-mort">Mortgage balance</label><div class="money"><input id="k-mort" inputmode="numeric" value="450,000"></div></div>
+          <div class="field"><label for="k-rate">Commission <span class="muted">(negotiable)</span></label><div class="pct"><input id="k-rate" inputmode="decimal" value="4"></div></div>
+          <div class="field"><label for="k-pen">Mortgage penalty</label><div class="money"><input id="k-pen" inputmode="numeric" value="0"></div><p class="fine">Breaking a mortgage early can mean a penalty. Your lender can tell you the exact amount.</p></div>
+          <div class="field"><label for="k-legal">Legal fees and closing costs</label><div class="money"><input id="k-legal" inputmode="numeric" value="2,000"></div></div>
+          <div class="field"><label for="k-other">Moving, staging and other</label><div class="money"><input id="k-other" inputmode="numeric" value="4,000"></div></div>
+        </form>
+        <div class="card calc-out" data-reveal aria-live="polite">
+          <p class="eyebrow">Estimated net to you</p>
+          <p class="net" id="k-net">$0</p>
+          <dl class="rows">
+            <div><dt>Sale price</dt><dd id="k-o-price"></dd></div>
+            <div><dt>Mortgage payout</dt><dd id="k-o-mort"></dd></div>
+            <div><dt>Commission (<span id="k-o-rate"></span>)</dt><dd id="k-o-comm"></dd></div>
+            <div><dt>HST on commission (13%)</dt><dd id="k-o-hst"></dd></div>
+            <div><dt>Mortgage penalty</dt><dd id="k-o-pen"></dd></div>
+            <div><dt>Legal and closing</dt><dd id="k-o-legal"></dd></div>
+            <div><dt>Moving and other</dt><dd id="k-o-other"></dd></div>
+          </dl>
+          <p class="nudge" id="k-nudge"></p>
+          <p class="fine">In Ontario, HST of 13% is charged on commission. Capital gains tax may apply if the home isn't your principal residence. Estimates only, not financial or tax advice.</p>
+          <a class="btn" href="#contact" data-reason="Home value">Get a real number for your home</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- From listed to sold -->
+  <section class="block" id="process">
+    <div class="wrap">
+      <div class="sec-head" data-reveal>
+        <div><p class="eyebrow">From listed to sold</p><h2>Four steps to sold.</h2></div>
+        <p class="lede">You'll always know what's next, what it costs and what I'm doing about it.</p>
+      </div>
+      <ol class="process" data-reveal>
+        <li><b>Walk-through and plan</b><span>We tour your home, review nearby sales and agree on price, timing and strategy.</span></li>
+        <li><b>Prepare and photograph</b><span>Small fixes and staging, then professional photos, video and a floor plan.</span></li>
+        <li><b>Go to market</b><span>Launch on the MLS® and social media, open houses, and feedback after every showing.</span></li>
+        <li><b>Negotiate and close</b><span>We review offers together, negotiate the best price and terms, and I handle the details to closing day.</span></li>
       </ol>
-      <a class="btn light" href="#contact" data-reason="Home evaluation">Get a free home evaluation</a>
     </div>
   </section>
 
-  <section class="panel" style="--at:.50" id="buying">
-    <div class="glass" data-reveal>
-      <p class="eyebrow">Buying</p>
-      <h2>Win the<br>right home.</h2>
-      <ol class="list">
-        <li><b>See it first.</b> Every MLS® listing the moment it goes live, plus coming-soon homes.</li>
-        <li><b>Know the numbers.</b> Budget, closing costs and land transfer tax, worked out before you shop.</li>
-        <li><b>Honest opinions.</b> What I'd do, at every showing.</li>
-        <li><b>Offers that land.</b> A plan for bidding wars and conditions that keep you safe.</li>
-      </ol>
-      <a class="btn light" href="/search/">Start your home search</a>
-    </div>
-  </section>
-
-  <section class="panel right" style="--at:.62" id="sold">
-    <div class="glass" data-reveal>
-      <p class="eyebrow">Recently sold</p>
-      <h2>Recent<br>results.</h2>
-      <!-- PLACEHOLDER: replace with Gentian's real recent sales -->
-      <ul class="sold">
-        <li><span class="mono">Sold</span><b>Detached · Neighbourhood</b><span>$0,000,000 · 00% of asking</span></li>
-        <li><span class="mono">Sold</span><b>Condo · Neighbourhood</b><span>$000,000 · 00 days on market</span></li>
-        <li><span class="mono">Sold</span><b>Townhouse · Neighbourhood</b><span>$0,000,000 · Multiple offers</span></li>
-      </ul>
-    </div>
-  </section>
-
-  <section class="panel" style="--at:.73" id="areas">
-    <div class="glass" data-reveal>
-      <p class="eyebrow">Where I work</p>
-      <h2>Know the<br>neighbourhood.</h2>
-      <p class="muted">Schools, commutes, what homes really sell for. I'll help you compare every area on your list.</p>
-      <ul class="chips"><li>Toronto</li><li>North York</li><li>Etobicoke</li><li>Scarborough</li><li>Mississauga</li><li>Oakville</li><li>Vaughan</li><li>Richmond Hill</li><li>Markham</li></ul>
-    </div>
-  </section>
-
-  <section class="panel right" style="--at:.86" id="reviews">
-    <div class="glass" data-reveal>
-      <p class="eyebrow">Client stories</p>
-      <h2>In their<br>words.</h2>
+  <!-- Reviews -->
+  <section class="block" id="reviews">
+    <div class="wrap">
+      <div class="rev-head" data-reveal>
+        <div><p class="eyebrow">Client stories</p><h2>What clients say.</h2></div>
+        <div class="rev-side">
+          <!-- PLACEHOLDER: real rating and count -->
+          <div class="rating"><b>0.0</b><span class="stars" aria-hidden="true">★★★★★</span><span class="muted">00 Google reviews</span></div>
+          <div class="arrows"><button type="button" class="arrow" data-dir="-1" aria-label="Previous reviews">‹</button><button type="button" class="arrow" data-dir="1" aria-label="Next reviews">›</button></div>
+        </div>
+      </div>
       <!-- PLACEHOLDER: real client reviews (with permission) -->
-      <blockquote><p>"Client review goes here. A sentence or two about what it was like to work with Gentian."</p><cite class="mono">★★★★★ · Client name · Neighbourhood</cite></blockquote>
-      <blockquote><p>"Client review goes here. A sentence or two about what it was like to work with Gentian."</p><cite class="mono">★★★★★ · Client name · Neighbourhood</cite></blockquote>
+      <div class="rev-track" id="rev-track" tabindex="0" aria-label="Client reviews">
+        <figure class="card review"><span class="stars" aria-label="5 stars">★★★★★</span><blockquote>"Client review goes here. A few sentences about what it was like to sell with Gentian."</blockquote><figcaption><b>Client name</b><span>Sold in Neighbourhood</span></figcaption></figure>
+        <figure class="card review"><span class="stars" aria-label="5 stars">★★★★★</span><blockquote>"Client review goes here. A few sentences about what it was like to buy with Gentian."</blockquote><figcaption><b>Client name</b><span>Bought in Neighbourhood</span></figcaption></figure>
+        <figure class="card review"><span class="stars" aria-label="5 stars">★★★★★</span><blockquote>"Client review goes here. A few sentences about what it was like to sell with Gentian."</blockquote><figcaption><b>Client name</b><span>Sold in Neighbourhood</span></figcaption></figure>
+        <figure class="card review"><span class="stars" aria-label="5 stars">★★★★★</span><blockquote>"Client review goes here. A few sentences about what it was like to buy with Gentian."</blockquote><figcaption><b>Client name</b><span>Bought in Neighbourhood</span></figcaption></figure>
+        <figure class="card review"><span class="stars" aria-label="5 stars">★★★★★</span><blockquote>"Client review goes here. A few sentences about what it was like to sell with Gentian."</blockquote><figcaption><b>Client name</b><span>Sold in Neighbourhood</span></figcaption></figure>
+      </div>
+      <a class="link rev-all" href="#contact">Ask me for references</a>
     </div>
   </section>
 
-  <section class="panel last" style="--at:1" id="contact">
-    <div class="glass wide" data-reveal>
-      <div>
+  <!-- Journal -->
+  <section class="block" id="journal">
+    <div class="wrap">
+      <div class="sec-head" data-reveal>
+        <div><p class="eyebrow">Journal</p><h2>Straight answers for buyers and sellers.</h2></div>
+        <p class="lede">Short, practical guides to the questions I hear most.</p>
+      </div>
+      <div class="posts" data-reveal>
+        <a class="card post" href="/journal/small-fixes-before-you-list/">
+          <img src="/assets/img/journal-fixes.webp" alt="" width="1200" height="750" loading="lazy">
+          <span class="meta">Selling · 4 min read</span>
+          <h3>Five small fixes that pay off before you list</h3>
+          <p class="muted">Paint, light bulbs and a deep clean: the inexpensive jobs that make the biggest difference in photos and showings.</p>
+        </a>
+        <a class="card post" href="/journal/first-home-gta-step-by-step/">
+          <img src="/assets/img/journal-first-home.webp" alt="" width="1200" height="750" loading="lazy">
+          <span class="meta">Buying · 5 min read</span>
+          <h3>Buying your first home in the GTA, step by step</h3>
+          <p class="muted">From saving and pre-approval to closing day, here's the order things happen and what to watch for.</p>
+        </a>
+        <a class="card post" href="/journal/firm-or-conditional-offer/">
+          <img src="/assets/img/journal-offers.webp" alt="" width="1200" height="750" loading="lazy">
+          <span class="meta">Buying and selling · 4 min read</span>
+          <h3>Firm or conditional: choosing the right offer</h3>
+          <p class="muted">What conditions protect, what they can cost you when buyers compete, and how to decide.</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section class="block" id="contact">
+    <div class="wrap contact">
+      <div class="contact-copy" data-reveal>
         <p class="eyebrow">Let's talk</p>
-        <h2>Your next move<br>starts here.</h2>
-        <!-- PLACEHOLDER contact details -->
-        <div class="lines mono"><a href="tel:+10000000000">(000) 000-0000</a><a href="mailto:hello@example.com">hello@example.com</a><span class="muted">Toronto &amp; the GTA</span></div>
+        <h2>What could your home sell for?</h2>
+        <p class="lede">Tell me a bit about your home or your plans. I reply within one business day, with real numbers and no pressure.</p>
+        <!-- PLACEHOLDER: brokerage, phone, email, Instagram, WhatsApp -->
+        <dl class="facts">
+          <div><dt>Brokerage</dt><dd>Brokerage name</dd></div>
+          <div><dt>Serving</dt><dd>Toronto and the GTA</dd></div>
+          <div><dt>Replies</dt><dd>Within one business day</dd></div>
+        </dl>
+        <div class="card agent">
+          <div class="me"><div class="avatar" aria-hidden="true">G</div><div><b>Gentian</b><p class="fine">Registered real estate salesperson</p></div></div>
+          <div class="lines"><a href="tel:+10000000000">(000) 000-0000</a><a href="mailto:hello@example.com">hello@example.com</a><a href="#">Instagram @yourhandle</a></div>
+          <a class="btn ghost" href="https://wa.me/10000000000">Message on WhatsApp</a>
+        </div>
       </div>
       <!-- Netlify Forms: submissions appear in the Netlify dashboard under Forms -->
-      <form name="contact" method="POST" data-netlify="true" netlify-honeypot="company" action="/thanks.html" class="form">
+      <form name="contact" method="POST" data-netlify="true" netlify-honeypot="company" action="/thanks.html" class="card form" data-reveal>
         <input type="hidden" name="form-name" value="contact">
         <p hidden><label>Leave this empty <input name="company"></label></p>
+        <h3>Start the conversation</h3>
         <div class="row2">
           <div class="field"><label for="c-name">Name</label><input id="c-name" name="name" autocomplete="name" required></div>
-          <div class="field"><label for="c-phone">Phone</label><input id="c-phone" name="phone" type="tel" autocomplete="tel"></div>
+          <div class="field"><label for="c-email">Email</label><input id="c-email" name="email" type="email" autocomplete="email" required></div>
         </div>
-        <div class="field"><label for="c-email">Email</label><input id="c-email" name="email" type="email" autocomplete="email" required></div>
-        <div class="row2">
-          <div class="field"><label for="c-reason">I'm interested in</label><select id="c-reason" name="reason"><option>Buying</option><option>Selling</option><option>Home evaluation</option><option>Just exploring</option></select></div>
-          <div class="field"><label for="c-addr">Property address (optional)</label><input id="c-addr" name="address" autocomplete="street-address"></div>
-        </div>
-        <div class="field"><label for="c-msg">Message</label><textarea id="c-msg" name="message" rows="3"></textarea></div>
-        <button class="btn light" type="submit">Send</button>
+        <div class="field"><label for="c-phone">Phone <span class="muted">(optional)</span></label><input id="c-phone" name="phone" type="tel" autocomplete="tel"></div>
+        <fieldset class="field">
+          <legend>I'm interested in</legend>
+          <div class="choice">
+            <label><input type="radio" name="reason" value="Selling" checked><span>Selling</span></label>
+            <label><input type="radio" name="reason" value="Buying"><span>Buying</span></label>
+            <label><input type="radio" name="reason" value="Both"><span>Both</span></label>
+            <label><input type="radio" name="reason" value="Home value"><span>Home value</span></label>
+          </div>
+        </fieldset>
+        <div class="field"><label for="c-msg">Tell me about your home or your plans</label><textarea id="c-msg" name="message" rows="4"></textarea></div>
+        <button class="btn" type="submit">Send my request</button>
+        <p class="fine">Your details stay with me and are never sold.</p>
       </form>
     </div>
   </section>
+
+  <section class="closing" data-reveal>
+    <p>Honest advice. Smart pricing. <span class="soft">A strong finish.</span></p>
+    <span class="fine">Gentian · Brokerage name</span>
+  </section>
+</div>
 </main>
 
-<footer class="site wrap">
-  <a class="foot-brand" href="/" aria-label="Gentian Real Estate home"><img src="/assets/brand/logo.svg" alt="Gentian Real Estate" width="112" height="22"></a>
-  <span>© <span id="yr"></span> Gentian · Real Estate · Brokerage name. Not intended to solicit buyers or sellers currently under contract.</span>
+<footer class="site">
+  <div class="wrap foot">
+    <div class="foot-brand-col">
+      <a class="foot-brand" href="/" aria-label="Gentian Real Estate home"><img src="/assets/brand/logo.svg" alt="Gentian Real Estate" width="112" height="22"></a>
+      <p>Real estate across Toronto and the GTA.</p>
+    </div>
+    <nav aria-label="Explore"><b>Explore</b><a href="#sold">Sold</a><a href="#selling">Selling</a><a href="#contact" data-reason="Home value">Home value</a><a href="#buying">Buying</a><a href="/search/">Search homes</a><a href="#reviews">Reviews</a><a href="#about">About</a><a href="#journal">Journal</a><a href="/presentations/">Presentations</a></nav>
+    <nav aria-label="Work with me"><b>Work with me</b><a href="#contact" data-reason="Selling">Sell your home</a><a href="/search/">Buy a home</a><a href="#contact" data-reason="Home value">What's my home worth?</a><a href="tel:+10000000000">(000) 000-0000</a><a href="mailto:hello@example.com">hello@example.com</a><a href="#">Instagram</a></nav>
+    <div><b>Where I work</b><span>Toronto</span><span>North York</span><span>Etobicoke</span><span>Scarborough</span><span>Mississauga</span><span>Oakville</span><span>Vaughan</span><span>Richmond Hill</span><span>Markham</span></div>
+  </div>
+  <div class="wrap legal">
+    <span>© <span id="yr"></span> Gentian. Brokerage name, Brokerage. Not intended to solicit buyers or sellers currently under contract.</span>
     <span>The trademarks MLS®, Multiple Listing Service® and the associated logos are owned by The Canadian Real Estate Association (CREA).</span>
+  </div>
 </footer>
 
-<script src="/assets/site.js?v=3" defer></script>
-<script src="/assets/journey.js?v=3" defer></script>
+<script src="/assets/site.js?v=4" defer></script>
+<script src="/assets/journey.js?v=4" defer></script>
+<script src="/assets/home.js?v=4" defer></script>
 </body>
 </html>

@@ -4,7 +4,8 @@ A fast static site, hosted on Netlify (no build step).
 
 | Page | Path | What it does |
 | --- | --- | --- |
-| Home / About | `/` | Introduces Gentian, services, reviews and a contact form |
+| Home | `/` | The walk-through tour with panels (intro, how I sell, buying, numbers), then: areas, recently sold, home prep before/after slider, selling plan (busy vs slower market), net proceeds calculator, four steps to sold, reviews, journal, contact form |
+| Journal | `/journal/<article>/` | Three short guides for buyers and sellers |
 | Home search | `/search/` | Visitors leave first name, last name, email and phone, then can search homes (sample listings until the MLS®/IDX feed is connected) |
 | Presentations | `/presentations/` | PIN-protected buyer and listing presentations |
 
@@ -12,9 +13,13 @@ A fast static site, hosted on Netlify (no build step).
 The contact form and the home-search sign-up use **Netlify Forms**. Submissions show in the Netlify dashboard under *Forms*, and you can turn on email notifications there.
 
 ## Placeholders to replace
-- Photo, bio, stats, reviews, phone and email in `index.html` (search for `PLACEHOLDER`)
+- Brokerage, photo, bio, stats, recent sales, rating and reviews, phone, email, Instagram and WhatsApp in `index.html` (search for `PLACEHOLDER`), plus the footer on every page
+- Home prep slider photos: `assets/img/prep-before.webp` and `prep-after.webp` (a sample until real before/after photos are in)
 - Slide content in `presentations/index.html` (`DECKS`)
 - PIN: `PIN_HASH` in `presentations/index.html` (SHA-256 of the PIN)
+
+## Home page scripts
+`assets/home.js` runs the before/after slider, the selling-plan tabs, the net proceeds calculator (Ontario HST of 13% on commission) and the reviews carousel. Links with `data-reason` pre-pick the matching option on the contact form.
 
 ## Home page scroll tour
 `assets/journey.js` drives the home page: one continuous camera move through one house, from the front in full sun, through the front door into the foyer and the open-concept living space, out the back glass doors to the backyard at sunset as the lights come on.
