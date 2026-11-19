@@ -19,7 +19,7 @@ The contact form and the home-search sign-up use **Netlify Forms**. Submissions 
 - Presentation stats: add numbers to the "About me" slides once they're ready (`ABOUT_TABS` in `assets/presentations.js`)
 
 ## Presentations
-`/presentations/` (PIN 2468 for now) opens a picker with two decks. Everything lives in `assets/presentations.js` and `assets/presentations.css`.
+`/presentations/` (PIN 0707) opens a picker with two decks. Everything lives in `assets/presentations.js` and `assets/presentations.css`.
 - **Words:** each deck is a list in `DECKS`; each slide is made by one of the templates in `T` (cards, statement, calculators, offers, timeline, reviews and so on). Every slide has speaker notes (`notes`).
 - **Presenting:** → / Space / Page Down or a clicker = next, ← = back, F = full screen, O = all slides, N = notes, Esc = close. Swipe on a tablet. Items appear one at a time; on a phone, turn it sideways.
 - **Client answers:** the name typed on the title slide, the priorities they tap (shown again on the recap slide) and their must-haves stay in that browser tab only (`sessionStorage`). "Clear answers for a new client" on the picker wipes them.

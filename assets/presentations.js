@@ -20,7 +20,7 @@
      Only the SHA-256 hash of the PIN is stored. To change it, put the new hash here (in a browser console:
      crypto.subtle.digest("SHA-256", new TextEncoder().encode("1234")) ...). This keeps visitors out, but it
      is not bank-grade security: keep confidential client data out of these slides. */
-  const PIN_HASH = "a1fb4e703a9ef1fa4936801721ff285a97ac85330856674412e054892afe6972";
+  const PIN_HASH = "6c25c8f454fea8dd5cd0b201b4f739993aebfc454de7b410ee9457c553699a85";
   async function sha256(s) {
     const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
     return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
