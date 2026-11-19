@@ -12,24 +12,7 @@
 <link rel="icon" href="/assets/brand/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
 <link rel="stylesheet" href="/assets/styles.css?v=6">
-<style>
-.pin{max-width:380px;margin:72px auto 0}
-.pin input{font:300 32px/1 var(--display);letter-spacing:.5em;text-align:center}
-.picker{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding-block:40px}
-.picker button{all:unset;cursor:pointer;background:var(--surface);border:1px solid var(--line);padding:clamp(24px,4vw,48px);display:grid;gap:14px;min-height:260px;align-content:end}
-.picker button:hover{border-color:var(--accent)}
-.picker button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.picker p{color:var(--muted)}
-.deck{padding-block:28px;display:grid;gap:18px}
-.slide{background:var(--surface);border:1px solid var(--line);aspect-ratio:16/9;padding:clamp(20px,5vw,64px);display:grid;align-content:center;gap:16px;overflow:auto}
-.slide ul{margin:0;padding-left:20px;display:grid;gap:8px;font-size:clamp(14px,1.8vw,19px)}
-.slide h2{font-size:clamp(28px,5.5vw,84px)}
-.slide ul{color:var(--muted)}
-#pos{font:400 11px/1 var(--mono);letter-spacing:.1em}
-.controls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.slide:fullscreen{border:0;border-radius:0;aspect-ratio:auto}
-@media (max-width:700px){.picker{grid-template-columns:1fr}.slide{aspect-ratio:auto;min-height:60vh}}
-</style>
+<link rel="stylesheet" href="/assets/presentations.css?v=1">
 </head>
 <body>
 <div class="wrap">
@@ -47,91 +30,58 @@
   </form>
 
   <section id="home" hidden>
+    <div class="pick-head">
+      <span class="eyebrow">Presentations</span>
+      <h1>Pick a presentation.</h1>
+      <p class="lede">Each one opens full screen, with speaker notes, a slide overview and live calculators. Type your client's name on the first slide and it follows them through the deck.</p>
+    </div>
     <div class="picker">
-      <button data-deck="buyer"><span class="eyebrow">Presentation</span><h2>Buyer</h2><p>Walk a new buyer through the process, the market and how we'll work together.</p></button>
-      <button data-deck="listing"><span class="eyebrow">Presentation</span><h2>Listing</h2><p>Show a seller your pricing approach, marketing plan and track record.</p></button>
+      <button type="button" class="deck-card" data-deck="listing">
+        <img src="/assets/tour/01-front.webp?v=3" alt="" decoding="async">
+        <span class="eyebrow">For sellers · <span data-count="listing"></span></span>
+        <h2>Listing presentation</h2>
+        <p>Pricing, preparing the home, the launch plan, offers and your net proceeds.</p>
+        <span class="go">Start presenting →</span>
+      </button>
+      <button type="button" class="deck-card" data-deck="buyer">
+        <img src="/assets/tour/05-open-concept.webp?v=3" alt="" decoding="async">
+        <span class="eyebrow">For buyers · <span data-count="buyer"></span></span>
+        <h2>Buyer presentation</h2>
+        <p>The process, the costs, monthly payments, must-haves and how to win the right home.</p>
+        <span class="go">Start presenting →</span>
+      </button>
     </div>
-  </section>
-
-  <section class="deck" id="deck" hidden>
-    <div class="controls">
-      <button class="btn ghost small" id="back">All presentations</button>
-      <span class="muted" id="pos"></span>
-      <span style="display:flex;gap:8px">
-        <button class="btn ghost small" id="prev" aria-label="Previous slide">←</button>
-        <button class="btn ghost small" id="next" aria-label="Next slide">→</button>
-        <button class="btn small" id="full">Full screen</button>
-      </span>
+    <div class="pick-foot">
+      <span>While presenting: <kbd>→</kbd> next · <kbd>←</kbd> back · <kbd>F</kbd> full screen · <kbd>O</kbd> all slides · <kbd>N</kbd> notes · <kbd>Esc</kbd> close. A presentation clicker works too.</span>
+      <button type="button" class="linkbtn" id="fresh">Clear answers for a new client</button>
     </div>
-    <div class="slide" id="slide" tabindex="0"></div>
   </section>
 </div>
 
-<script>
-/* ---------- PIN ----------
-   Only the SHA-256 hash of the PIN is stored here. To change the PIN, put the new hash below
-   (run in a browser console: crypto.subtle.digest("SHA-256", new TextEncoder().encode("1234")) ...).
-   Note: this keeps visitors out of the screens, but it is not bank-grade security. Don't put
-   confidential client data in these slides until a server-side check is added. */
-const PIN_HASH = "a1fb4e703a9ef1fa4936801721ff285a97ac85330856674412e054892afe6972";
-const $ = id => document.getElementById(id);
-async function sha256(s){
-  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
-  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,"0")).join("");
-}
-function show(view){ ["pinform","home","deck"].forEach(v => $(v).hidden = v !== view); $("lock").hidden = view === "pinform"; }
-$("pinform").addEventListener("submit", async e => {
-  e.preventDefault();
-  if (await sha256($("pin").value.trim()) === PIN_HASH) {
-    try { sessionStorage.setItem("gh_pres", "1"); } catch(_){}
-    $("pin").value = ""; $("pinerr").textContent = ""; show("home");
-  } else { $("pinerr").textContent = "That PIN isn't right. Try again."; $("pin").select(); }
-});
-$("lock").addEventListener("click", () => { try { sessionStorage.removeItem("gh_pres"); } catch(_){} show("pinform"); $("pin").focus(); });
+<div class="present" id="present" hidden>
+  <div class="bar top">
+    <span class="prog" id="prog"></span>
+    <b id="deckname"></b><span class="sec" id="sec"></span>
+    <span class="count" id="count"></span>
+    <button type="button" class="pbtn" id="exit">Close</button>
+  </div>
+  <div class="viewport" id="viewport">
+    <div class="stage" id="stage" aria-live="polite"></div>
+    <div class="notes" id="notes" hidden></div>
+    <div class="overview" id="overview" hidden><div class="overview-grid"></div></div>
+    <p class="rotate">Turn your phone sideways for a bigger view.</p>
+  </div>
+  <div class="bar bottom">
+    <button type="button" class="pbtn arrow" id="prev" aria-label="Previous slide">←</button>
+    <button type="button" class="pbtn arrow" id="next" aria-label="Next">→</button>
+    <button type="button" class="pbtn" id="slidesbtn" aria-pressed="false">All slides</button>
+    <button type="button" class="pbtn" id="notesbtn" aria-pressed="false">Notes</button>
+    <button type="button" class="pbtn" id="full" aria-pressed="false">Full screen</button>
+    <span class="hint"><kbd>→</kbd> next · <kbd>F</kbd> full screen · <kbd>O</kbd> slides · <kbd>N</kbd> notes</span>
+  </div>
+</div>
 
-/* ---------- Decks (PLACEHOLDER content: replace with Gentian's own) ---------- */
-const DECKS = {
-  buyer: [
-    {h:"Welcome", b:["Thank you for meeting with me", "Today: how buying works, the market, and how I'll help you win the right home"]},
-    {h:"About me", b:["Your GTA agent: background and experience", "Homes sold · Years in the business · Neighbourhoods I know best"]},
-    {h:"The buying process", b:["1. Mortgage pre-approval", "2. Needs, wants and budget", "3. Showings and research", "4. Offer and negotiation", "5. Conditions, closing and keys"]},
-    {h:"Today's market", b:["Average prices in your target areas", "Days on market and competition", "What this means for your offer strategy"]},
-    {h:"How I'll help", b:["New listings the moment they hit the MLS®", "Honest opinions on every home", "Strong negotiation on price and terms"]},
-    {h:"Costs to plan for", b:["Down payment and closing costs", "Land transfer tax (Ontario + Toronto)", "Legal fees, inspection, moving"]},
-    {h:"Next steps", b:["Sign the buyer representation agreement", "Get pre-approved", "Set up your home search alerts"]},
-  ],
-  listing: [
-    {h:"Selling your home", b:["Thank you for considering me", "Today: pricing, marketing and how we'll get you the best result"]},
-    {h:"About me", b:["Track record: homes sold, average sale-to-list ratio", "Recent sales near you"]},
-    {h:"Your local market", b:["Recent comparable sales", "Active competition", "Days on market in your neighbourhood"]},
-    {h:"Pricing strategy", b:["Suggested price range based on comparables", "Offer date vs. offers anytime", "How pricing affects buyer traffic"]},
-    {h:"Marketing plan", b:["Professional photography, video and floor plans", "MLS®, social media and my buyer network", "Open houses and agent previews"]},
-    {h:"Preparing your home", b:["Staging and small fixes that pay off", "Pre-listing inspection", "Timeline to go live"]},
-    {h:"Next steps", b:["Sign the listing agreement", "Book photography", "Launch date"]},
-  ],
-};
-let deck = null, i = 0;
-function esc(s){ return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-function draw(){
-  const s = DECKS[deck][i];
-  $("slide").innerHTML = `<h2>${esc(s.h)}</h2><ul>${s.b.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
-  $("pos").textContent = `${i+1} / ${DECKS[deck].length}`;
-  $("prev").disabled = i === 0; $("next").disabled = i === DECKS[deck].length - 1;
-}
-document.querySelectorAll("[data-deck]").forEach(b => b.addEventListener("click", () => { deck = b.dataset.deck; i = 0; show("deck"); draw(); $("slide").focus(); }));
-$("back").addEventListener("click", () => show("home"));
-$("prev").addEventListener("click", () => { if (i > 0) { i--; draw(); } });
-$("next").addEventListener("click", () => { if (i < DECKS[deck].length - 1) { i++; draw(); } });
-$("full").addEventListener("click", () => $("slide").requestFullscreen?.());
-document.addEventListener("keydown", e => {
-  if ($("deck").hidden) return;
-  if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); $("next").click(); }
-  if (e.key === "ArrowLeft") { e.preventDefault(); $("prev").click(); }
-});
-
-let ok = false; try { ok = sessionStorage.getItem("gh_pres") === "1"; } catch(_){}
-show(ok ? "home" : "pinform");
-</script>
+<script src="/assets/presentations.js?v=1"></script>
 <script src="/assets/site.js?v=4" defer></script>
 </body>
 </html>

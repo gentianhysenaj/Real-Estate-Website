@@ -7,7 +7,7 @@ A fast static site, hosted on Netlify (no build step).
 | Home | `/` | The walk-through tour with panels (intro, how I sell, buying, numbers), then: areas, recently sold, home prep before/after slider, selling plan (busy vs slower market), net proceeds calculator, four steps to sold, reviews, journal, contact form |
 | Journal | `/journal/<article>/` | Three short guides for buyers and sellers |
 | Home search | `/search/` | Visitors leave first name, last name, email and phone, then can search homes (sample listings until the MLS®/IDX feed is connected) |
-| Presentations | `/presentations/` | PIN-protected buyer and listing presentations |
+| Presentations | `/presentations/` | PIN-protected listing (24 slides) and buyer (23 slides) presentations: full-screen presenter with speaker notes, a slide overview, live calculators and slides the client taps |
 
 ## Leads
 The contact form and the home-search sign-up use **Netlify Forms**. Submissions show in the Netlify dashboard under *Forms*, and you can turn on email notifications there.
@@ -16,8 +16,15 @@ The contact form and the home-search sign-up use **Netlify Forms**. Submissions 
 - Stats, recent sales and client reviews in `index.html` (search for `PLACEHOLDER`). The review cards are hidden until real ones are added: remove `hidden` from `#rev-track` and `.arrows`.
 - Done: brokerage (Royal LePage Pinnacle Real Estate, Brokerage), headshot (`assets/img/gentian-avatar.webp`, `gentian-portrait.webp`), phone, email, Instagram, WhatsApp click-to-chat (`wa.me` link with a ready-made first message) and the Google reviews link.
 - Home prep slider photos: `assets/img/prep-before.webp` and `prep-after.webp` (a sample until real before/after photos are in)
-- Slide content in `presentations/index.html` (`DECKS`)
-- PIN: `PIN_HASH` in `presentations/index.html` (SHA-256 of the PIN)
+- Presentation stats: add numbers to the "About me" slides once they're ready (`ABOUT_TABS` in `assets/presentations.js`)
+
+## Presentations
+`/presentations/` (PIN 2468 for now) opens a picker with two decks. Everything lives in `assets/presentations.js` and `assets/presentations.css`.
+- **Words:** each deck is a list in `DECKS`; each slide is made by one of the templates in `T` (cards, statement, calculators, offers, timeline, reviews and so on). Every slide has speaker notes (`notes`).
+- **Presenting:** → / Space / Page Down or a clicker = next, ← = back, F = full screen, O = all slides, N = notes, Esc = close. Swipe on a tablet. Items appear one at a time; on a phone, turn it sideways.
+- **Client answers:** the name typed on the title slide, the priorities they tap (shown again on the recap slide) and their must-haves stay in that browser tab only (`sessionStorage`). "Clear answers for a new client" on the picker wipes them.
+- **Calculators** use Ontario rules for 2026: land transfer tax with the Toronto rates from April 1, 2026, first-time buyer refunds ($4,000 Ontario, $4,475 Toronto), mortgage insurance (4.00 / 3.10 / 2.80%, +0.20% for 30 years), 8% sales tax on the premium, minimum down payments, semi-annual compounding, and 13% HST on commission.
+- **PIN:** `PIN_HASH` in `assets/presentations.js` (SHA-256 of the PIN). It keeps visitors out, but it is not bank-grade security, so keep confidential client details out of the slides.
 
 ## Home page scripts
 `assets/home.js` runs the before/after slider, the selling-plan tabs, the net proceeds calculator (Ontario HST of 13% on commission) and the reviews carousel. Links with `data-reason` pre-pick the matching option on the contact form.
