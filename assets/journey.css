@@ -234,8 +234,8 @@ footer.site{color:var(--muted)}
 .arrow:hover{border-color:var(--ink)}
 .rev-track{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(300px,calc((100% - 32px) / 3));gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:6px;outline:none}
 .rev-track::-webkit-scrollbar{display:none}
-.review{scroll-snap-align:start;margin:0;gap:16px;align-content:space-between}
-.review blockquote{margin:0;font-size:19px;line-height:1.45;font-weight:500;letter-spacing:-.02em}
+.review{scroll-snap-align:start;margin:0;gap:16px;grid-template-rows:auto 1fr auto}
+.review blockquote{margin:0;font-size:17.5px;line-height:1.45;font-weight:500;letter-spacing:-.02em}
 .review figcaption{display:grid;gap:2px;font-size:14px}
 .review figcaption span{color:var(--muted)}
 .rev-all{margin-top:22px}
