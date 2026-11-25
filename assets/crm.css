@@ -301,3 +301,24 @@ table.rep td:last-child,table.rep th:last-child{text-align:right;padding-right:0
 .chase{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;padding:6px 0 2px}
 .chase .muted{flex:1;min-width:200px}
 .bar-l .miss{font-style:normal;color:var(--due);font-size:12px;margin-left:6px}
+
+/* pipeline: capped columns and the full stage list */
+.col-h{all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:10px;font-size:13px;color:var(--muted)}
+.col-h b{color:var(--ink);font-weight:600}
+.col-h:hover,.col-h:focus-visible{background:var(--surface)}
+.col-h:hover b{text-decoration:underline}
+.col-h:focus-visible{outline:2px solid var(--accent)}
+.col-more{all:unset;cursor:pointer;text-align:center;padding:9px;border-radius:10px;font-size:13px;font-weight:600;color:var(--accent-strong);border:1px dashed var(--line)}
+.col-more:hover{background:var(--surface)}
+.col-empty{color:var(--muted);font-size:13px;padding:6px 8px;margin:0}
+.col{max-height:none}
+.pcard{gap:3px;padding:9px 11px}
+.pcard .pc-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pcard .pc-top b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pcard small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage-chips{display:flex;gap:6px;flex-wrap:wrap}
+.stage-chips .chip[aria-pressed="true"] .muted{color:inherit;opacity:.7}
+.sortsel,.movesel{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px}
+.movesel{padding:5px 8px;max-width:140px}
+.prow .side{flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:560px){.movesel{max-width:110px}}

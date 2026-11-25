@@ -406,7 +406,7 @@ function show(v) {
   VIEWS.forEach(k => $id("v-" + k).hidden = k !== v);
   render(); store("crm-tab", v === "import" ? "contacts" : v); window.scrollTo(0, 0);
 }
-document.querySelectorAll(".tab").forEach(t => t.onclick = () => show(t.dataset.v));
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => { if (t.dataset.v === "pipeline" && view === "pipeline") pipeStage = null; show(t.dataset.v); });
 
 function render() {
   if (!db) return;
@@ -714,16 +714,31 @@ function setup() {
 }
 
 /* ---------- pipeline ---------- */
+const PIPE_MAX = 15;
+let pipeStage = null, pipeQ = "", pipeSort = "due";
+// Follow-ups that are due come first (oldest first), then upcoming ones, then the rest, newest first.
+function pipeOrder(a, b) {
+  const fa = a.follow || "9999", fb = b.follow || "9999";
+  if (fa !== fb) return fa.localeCompare(fb);
+  return (b.created || "").localeCompare(a.created || "");
+}
+function pipeCard(c) {
+  const sub = c.crit && c.crit.max ? money(c.crit.min) + " to " + money(c.crit.max) + (c.crit.areas ? " · " + c.crit.areas : "") : (c.phone || c.source || "");
+  return `<div class="deal pcard" draggable="true" data-id="${c.id}" data-open="${c.id}" tabindex="0">
+    <div class="pc-top"><b>${esc(name(c))}</b>${c.follow ? `<span class="pill ${isDue(c) ? "due" : ""}">${dueLabel(c)}</span>` : ""}</div>
+    <small>${esc(c.type)}${sub ? " · " + esc(sub) : ""}</small></div>`;
+}
 function renderPipeline() {
   const el = $id("v-pipeline");
-  el.innerHTML = `<div class="sec-h"><h2>Pipeline</h2><span class="board-hint">Drag a client to move them, or open them and change the stage.</span></div>
-  <div class="board">${STAGES.map(s => { const cs = db.contacts.filter(c => c.stage === s); return `<div class="col" data-stage="${s}">
-    <h3><b>${s}</b><span>${cs.length}</span></h3>
-    ${cs.map(c => `<div class="deal" draggable="true" data-id="${c.id}" data-open="${c.id}" tabindex="0">
-      <b>${esc(name(c))}</b>
-      <div class="l">${typePill(c)}${c.follow ? `<span class="pill ${isDue(c) ? "due" : ""}">${dueLabel(c)}</span>` : ""}</div>
-      ${c.crit && c.crit.max ? `<small>${money(c.crit.min)} to ${money(c.crit.max)}${c.crit.areas ? " · " + esc(c.crit.areas) : ""}</small>` : `<small>${esc(c.source)}</small>`}
-    </div>`).join("")}</div>`; }).join("")}</div>`;
+  if (pipeStage) return renderPipeStage(el);
+  el.innerHTML = `<div class="sec-h"><h2>Pipeline</h2><span class="board-hint">Each stage shows ${PIPE_MAX} clients, due follow-ups first. Click a stage name to see everyone in it. Drag a client to move them.</span></div>
+  <div class="board">${STAGES.map(s => { const cs = db.contacts.filter(c => c.stage === s).sort(pipeOrder); const more = cs.length - PIPE_MAX;
+    return `<div class="col" data-stage="${s}">
+    <button class="col-h" data-pipe="${s}" aria-label="See all ${cs.length} in ${s}"><b>${s}</b><span>${cs.length} ›</span></button>
+    ${cs.length ? cs.slice(0, PIPE_MAX).map(pipeCard).join("") : `<p class="col-empty">No one here</p>`}
+    ${more > 0 ? `<button class="col-more" data-pipe="${s}">See all ${cs.length} →</button>` : ""}
+    </div>`; }).join("")}</div>`;
+  el.querySelectorAll("[data-pipe]").forEach(b => b.onclick = () => { pipeStage = b.dataset.pipe; pipeQ = ""; renderPipeline(); window.scrollTo(0, 0); });
   el.querySelectorAll(".deal").forEach(d => {
     d.addEventListener("dragstart", e => { d.classList.add("dragging"); e.dataTransfer.setData("text/plain", d.dataset.id); });
     d.addEventListener("dragend", () => d.classList.remove("dragging"));
@@ -731,8 +746,42 @@ function renderPipeline() {
   el.querySelectorAll(".col").forEach(col => {
     col.addEventListener("dragover", e => { e.preventDefault(); col.classList.add("over"); });
     col.addEventListener("dragleave", () => col.classList.remove("over"));
-    col.addEventListener("drop", e => { e.preventDefault(); col.classList.remove("over"); const c = byId(e.dataTransfer.getData("text/plain"));
-      if (c && c.stage !== col.dataset.stage) { addLog(c, "note", "Moved from " + c.stage + " to " + col.dataset.stage); c.stage = col.dataset.stage; save(); render(); toast(c.first + " moved to " + c.stage); } });
+    col.addEventListener("drop", e => { e.preventDefault(); col.classList.remove("over"); moveStage(byId(e.dataTransfer.getData("text/plain")), col.dataset.stage); });
+  });
+}
+function moveStage(c, stage) {
+  if (!c || c.stage === stage) return;
+  addLog(c, "note", "Moved from " + c.stage + " to " + stage); c.stage = stage; save(); render(); toast(c.first + " moved to " + stage);
+}
+function renderPipeStage(el) {
+  const all = db.contacts.filter(c => c.stage === pipeStage);
+  if (!el.querySelector("#pipeList")) {
+    el.innerHTML = `<div><button class="btn ghost" id="pipeBack" style="padding-left:0">← All stages</button></div>
+    <div class="sec-h"><h2 id="pipeTitle"></h2><span class="meta" id="pipeCount"></span></div>
+    <div class="stage-chips">${STAGES.map(s => `<button class="chip" data-stagechip="${s}">${s} <span class="muted">${db.contacts.filter(c => c.stage === s).length}</span></button>`).join("")}</div>
+    <div class="filters"><input class="search" id="pipeQ" type="search" placeholder="Search this stage" aria-label="Search this stage">
+      <select id="pipeSort" aria-label="Sort" class="sortsel"><option value="due">Follow-up date</option><option value="new">Newest first</option><option value="name">Name A to Z</option></select></div>
+    <div class="card list" id="pipeList"></div>`;
+    el.querySelector("#pipeBack").onclick = () => { pipeStage = null; renderPipeline(); };
+    el.querySelector("#pipeQ").oninput = e => { pipeQ = e.target.value.toLowerCase(); renderPipeStage(el); };
+    el.querySelector("#pipeSort").onchange = e => { pipeSort = e.target.value; renderPipeStage(el); };
+    el.querySelectorAll("[data-stagechip]").forEach(b => b.onclick = () => { pipeStage = b.dataset.stagechip; pipeQ = ""; el.querySelector("#pipeQ").value = ""; renderPipeStage(el); });
+  }
+  el.querySelector("#pipeSort").value = pipeSort;
+  el.querySelectorAll("[data-stagechip]").forEach(b => b.setAttribute("aria-pressed", b.dataset.stagechip === pipeStage));
+  const cs = all.filter(c => !pipeQ || [name(c), c.phone, c.email, c.source, (c.tags || []).join(" "), c.crit && c.crit.areas].join(" ").toLowerCase().includes(pipeQ))
+    .sort(pipeSort === "name" ? (a, b) => name(a).localeCompare(name(b)) : pipeSort === "new" ? (a, b) => (b.created || "").localeCompare(a.created || "") : pipeOrder);
+  el.querySelector("#pipeTitle").textContent = pipeStage;
+  el.querySelector("#pipeCount").textContent = (pipeQ ? cs.length + " of " : "") + all.length + (all.length === 1 ? " client" : " clients");
+  const list = el.querySelector("#pipeList");
+  list.innerHTML = cs.length ? cs.map(c => `<div class="row prow" data-open="${c.id}" tabindex="0"><div class="av">${esc(initials(c))}</div>
+    <div class="who"><b>${esc(name(c))}</b><small>${esc([c.type, c.phone, c.followNote && c.follow ? c.followNote : ""].filter(Boolean).join(" · "))}</small></div>
+    <div class="side">${c.follow ? `<span class="pill ${isDue(c) ? "due" : ""}">${dueLabel(c)}</span>` : ""}
+      <select class="movesel" data-move="${c.id}" aria-label="Move ${esc(name(c))} to another stage">${opt(STAGES, c.stage)}</select></div></div>`).join("")
+    : `<p class="empty">${all.length ? "No one matches. Try another search." : "No one in this stage yet."}</p>`;
+  list.querySelectorAll("[data-move]").forEach(sel => {
+    sel.onclick = e => e.stopPropagation();
+    sel.onchange = e => { const c = byId(sel.dataset.move); moveStage(c, e.target.value); };
   });
 }
 
