@@ -1,0 +1,9 @@
+{
+  "name": "gentian-hysenaj-real-estate",
+  "private": true,
+  "type": "module",
+  "description": "Static site plus the serverless functions behind the client book (/crm/).",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.0"
+  }
+}

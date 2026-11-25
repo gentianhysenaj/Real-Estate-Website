@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Client book · Gentian Hysenaj</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f6f2ec">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="/assets/crm.css?v=1">
+</head>
+<body>
+<div class="signin" id="signin" hidden>
+  <form id="pinForm" autocomplete="off">
+    <div class="mark" aria-hidden="true">GH</div>
+    <h1>Client book</h1>
+    <p class="muted">Enter your PIN to open your clients and deals.</p>
+    <label for="pin" class="muted" style="font-size:13px" hidden>PIN</label>
+    <input id="pin" type="password" inputmode="text" autocomplete="current-password" placeholder="PIN" aria-label="PIN" required>
+    <button class="btn primary" type="submit" id="pinBtn">Open</button>
+    <p class="err" id="pinErr" role="alert"></p>
+  </form>
+</div>
+
+<div class="app" id="app" hidden>
+  <header class="top">
+    <div class="mark" aria-hidden="true">GH</div>
+    <div><h1>Client book</h1><div class="sub">Gentian Hysenaj · Royal LePage Pinnacle</div></div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="tab-today" data-v="today">Today <span class="n" id="dueCount"></span></button>
+      <button class="tab" role="tab" id="tab-pipeline" data-v="pipeline">Pipeline</button>
+      <button class="tab" role="tab" id="tab-deals" data-v="deals">Deal desk</button>
+      <button class="tab" role="tab" id="tab-meta" data-v="meta">Meta leads <span class="n" id="metaCount"></span></button>
+      <button class="tab" role="tab" id="tab-contacts" data-v="contacts">Contacts</button>
+    </nav>
+    <div class="right">
+      <span class="status" id="saveState" role="status"></span>
+      <button class="addbtn" id="addBtn">+ New contact</button>
+      <div class="menu">
+        <button class="iconbtn" id="menuBtn" aria-haspopup="true" aria-expanded="false" aria-label="More">⋯</button>
+        <div class="menu-list" id="menuList" hidden>
+          <button id="mImport">Import contacts</button>
+          <button id="mExport">Download contacts (CSV)</button>
+          <button id="mRefresh">Check for new leads</button>
+          <button id="mLogout">Lock</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="view" id="v-today"></section>
+  <section class="view" id="v-pipeline" hidden></section>
+  <section class="view" id="v-contacts" hidden></section>
+  <section class="view" id="v-import" hidden></section>
+  <section class="view" id="v-deals" hidden></section>
+  <section class="view" id="v-meta" hidden></section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet" aria-label="Details" aria-hidden="true"></aside>
+<div class="toast" id="toast" role="status"></div>
+<script src="/assets/crm.js?v=1"></script>
+</body>
+</html>

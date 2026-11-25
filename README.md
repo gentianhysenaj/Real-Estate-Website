@@ -7,6 +7,7 @@ A fast static site, hosted on Netlify (no build step).
 | Home | `/` | The walk-through tour with panels (intro, how I sell, buying, numbers), then: areas, recently sold, home prep before/after slider, selling plan (busy vs slower market), net proceeds calculator, four steps to sold, reviews, journal, contact form |
 | Journal | `/journal/<article>/` | Three short guides for buyers and sellers |
 | Home search | `/search/` | Visitors leave first name, last name, email and phone, then can search homes (sample listings until the MLS®/IDX feed is connected) |
+| Client book | `/crm/` | Your private CRM behind your PIN: today's follow-ups, pipeline, deal desk with paperwork checklists, Meta leads and contacts. Website sign-ups land in it automatically |
 | Presentations | `/presentations/` | PIN-protected listing (24 slides) and buyer (23 slides) presentations: full-screen presenter with speaker notes, a slide overview, live calculators and slides the client taps |
 
 ## Leads
@@ -17,6 +18,15 @@ The contact form and the home-search sign-up use **Netlify Forms**. Submissions 
 - Done: brokerage (Royal LePage Pinnacle Real Estate, Brokerage), headshot (`assets/img/gentian-avatar.webp`, `gentian-portrait.webp`), phone, email, Instagram, WhatsApp click-to-chat (`wa.me` link with a ready-made first message) and the Google reviews link.
 - Home prep slider photos: `assets/img/prep-before.webp` and `prep-after.webp` (a sample until real before/after photos are in)
 - Presentation stats: add numbers to the "About me" slides once they're ready (`ABOUT_TABS` in `assets/presentations.js`)
+
+## Client book (CRM)
+`/crm/` is a private CRM. Open it with your PIN (checked on the server; 8 wrong tries locks it for 15 minutes; you stay signed in on a device for 30 days, or until you choose Lock).
+- **Tabs:** Today (follow-ups due, new leads, deals with deadlines), Pipeline (drag clients between stages), Deal desk (each property with status, prices, dates, other agent, lawyer, a buyer or seller paperwork checklist you can add to, and updates), Meta leads, Contacts (search, filters, import a CSV, download a CSV from the ⋯ menu).
+- **Data:** one JSON document in Netlify Blobs (store `crm`, key `db`), read and saved only through `netlify/functions/crm.mjs` at `/api/crm/*`. Every change saves a moment later; the header shows Saved.
+- **Leads in:** `netlify/functions/submission-created.mjs` runs after every Netlify Forms submission (`home-search-signup`, `contact`) and drops the lead in `inbox/`; the app adds it as a New lead (or a note on an existing contact with the same email or phone). Netlify Forms must stay enabled.
+- **Meta / Zapier:** `POST /api/crm/lead` with header `x-crm-key: <CRM_LEAD_KEY>` and JSON like `{"full_name","email","phone_number","ad_name","campaign_name","answers":{...}}` adds a Meta lead.
+- **Settings (Netlify environment variables):** `CRM_PIN_HASH` (PBKDF2 hash of the PIN, never the PIN itself), `CRM_SECRET` (signs sign-in cookies), `CRM_LEAD_KEY`. To change the PIN, make a new hash (`pbkdf2$210000$<salt hex>$<sha256 hash hex>`), replace `CRM_PIN_HASH` and redeploy.
+- **Still to come:** the twice-daily Gmail check that files deal emails onto deals.
 
 ## Presentations
 `/presentations/` (PIN 0707) opens a picker with two decks. Everything lives in `assets/presentations.js` and `assets/presentations.css`.
