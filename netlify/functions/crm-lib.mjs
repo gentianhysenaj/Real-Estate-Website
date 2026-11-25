@@ -38,7 +38,7 @@ export async function addLead(lead) {
   await store().setJSON("inbox/" + id, { ...lead, id, received });
   // A copy for the new-lead email alert (the Apps Script picks these up every few minutes). Kept apart from
   // inbox/ because the app clears inbox/ as soon as it folds a lead in, which can be before the alert goes out.
-  if (lead.kind !== "email") {
+  if (!["email", "file", "chase"].includes(lead.kind)) {
     await store().setJSON("alerts/" + id, { id, received, kind: lead.kind, first: lead.first || "", last: lead.last || "",
       email: lead.email || "", phone: lead.phone || "", ad: lead.ad || "", campaign: lead.campaign || "", reason: lead.reason || "",
       message: String(lead.message || "").slice(0, 400), answers: lead.answers || {} });
@@ -95,7 +95,50 @@ export function upcomingDates(db, today, days) {
   return out.map(x => ({ ...x, n: daysBetween(today, x.date) })).filter(x => x.n >= 0 && x.n <= days).sort((a, b) => a.n - b.n);
 }
 
-export function buildSummary(db, base) {
+/* ---------- paperwork chase-ups (the Apps Script turns these into Gmail drafts; nothing is sent) ---------- */
+const emailIn = t => (String(t || "").match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/) || [""])[0];
+const ASK_LINE = {
+  agr: "A fully signed copy of the agreement, with any amendments",
+  coop: "The signed Confirmation of Cooperation",
+  dep: "The deposit receipt",
+  blaw: "Your lawyer's name, phone number and email",
+  slaw: "Your lawyer's name, phone number and email",
+  fin: "A few minutes to confirm your ID, which the government's FINTRAC rules require. When works for a quick call or meeting this week?",
+};
+// st remembers when each deal was last chased so the same request isn't drafted again for 4 days.
+export function buildChase(db, st, daily, now = new Date()) {
+  const out = [], today = isoToday();
+  for (const d of (db && db.deals) || []) {
+    const miss = (d.docs || []).filter(x => x.req && !x.done && x.ask);
+    if (!miss.length) continue;
+    const asked = !!d.chaseNow && d.chaseNow > (st[d.id + ":now"] || "");
+    if (!asked && !(daily && ["Conditional", "Firm"].includes(d.status))) continue;
+    if (asked) st[d.id + ":now"] = d.chaseNow;
+    const c = (db.contacts || []).find(x => x.id === d.client);
+    for (const who of ["agent", "client"]) {
+      const docs = miss.filter(x => x.ask === who);
+      if (!docs.length) continue;
+      const key = d.id + ":" + who;
+      if (!asked && st[key] && daysBetween(st[key].slice(0, 10), today) < 4) continue;
+      const to = who === "agent" ? emailIn(d.otherAgent) : (c && emailIn(c.email)) || "";
+      if (!to) continue;
+      let first = who === "agent" ? String(d.otherAgent || "").split(/[,(<|\/]/)[0].trim().split(/\s+/)[0] : String((c && c.first) || "").replace(/^Sample:\s*/, "").split(/\s+/)[0];
+      if (!/^[A-Za-zÀ-ÿ'-]+$/.test(first || "")) first = "there";
+      const lines = [...new Set(docs.map(x => ASK_LINE[x.k.startsWith("fin-") ? "fin" : x.k]).filter(Boolean))];
+      if (!lines.length) continue;
+      const addr = d.addr || "the property";
+      const body = who === "agent"
+        ? `Hi ${first},\n\nHope you're well. For our file on ${addr}, could you please send over:\n\n${lines.map(l => "- " + l).join("\n")}\n\nThank you,\nGentian`
+        : `Hi ${first},\n\nA couple of quick things I need for your file on ${addr}:\n\n${lines.map(l => "- " + l).join("\n")}\n\nThanks so much,\nGentian`;
+      st[key] = now.toISOString();
+      out.push({ deal: d.id, to, who: who === "agent" ? "the other agent" : "your client", docs: docs.map(x => x.k),
+        subject: who === "agent" ? `${addr}: paperwork for our file` : `${addr}: a couple of quick things`, body });
+    }
+  }
+  return out;
+}
+
+export function buildSummary(db, base, drafted = 0) {
   db = db || { contacts: [], deals: [] };
   const today = isoToday();
   const contacts = db.contacts || [];
@@ -111,6 +154,9 @@ export function buildSummary(db, base) {
     }
   }
   dl.sort((a, b) => a.v.localeCompare(b.v));
+  const paper = (db.deals || []).filter(d => ["Conditional", "Firm"].includes(d.status) || (d.status === "Closed" && (d.close || "") >= addDays(today, -60)))
+    .map(d => ({ d, miss: (d.docs || []).filter(x => x.req && !x.done) })).filter(x => x.miss.length);
+  const noEmail = paper.filter(({ d, miss }) => miss.some(x => x.ask === "agent") && !emailIn(d.otherAgent));
   const since = addDays(today, -1);
   const newLeads = contacts.filter(c => c.stage === "New lead" && c.created && c.created.slice(0, 10) >= since).length
     + (db.meta || []).filter(m => !m.moved && (m.t || "").slice(0, 10) >= since).length;
@@ -123,11 +169,16 @@ export function buildSummary(db, base) {
     ${sec("Call these first", callFirst.map(({ c }) => `<b>${escH(nm(c))}</b>: ${escH([c.crit && c.crit.pre === "Yes" ? "pre-approved" : "", c.crit && c.crit.when].filter(Boolean).join(", "))}${c.phone ? ` · <a href="tel:${escH(c.phone)}">${escH(c.phone)}</a>` : ""}`))}
     ${sec("Birthdays and anniversaries this week", dates.map(x => `<b>${escH(nm(x.c))}</b>: ${escH(x.label)} ${when(x.n)}`))}
     ${sec("Deal deadlines this week", dl.map(x => `<b>${escH(x.d.addr || "Deal")}</b>: ${escH(x.label)} ${when(x.n)}`))}
+    ${sec("Paperwork to finish", paper.map(({ d, miss }) => `<b>${escH(d.addr || "Deal")}</b>: ${miss.length} missing (${escH(miss.slice(0, 4).map(x => x.d).join(", "))}${miss.length > 4 ? " and " + (miss.length - 4) + " more" : ""})`))}
+    ${drafted ? `<p style="margin:10px 0 0">I wrote ${drafted} chase-up email${drafted === 1 ? "" : "s"} for missing paperwork. ${drafted === 1 ? "It's" : "They're"} in your Gmail Drafts for you to check and send.</p>` : ""}
+    ${noEmail.length ? `<p style="margin:10px 0 0;color:#6e665d">Add the other agent's email on ${escH(noEmail.map(x => x.d.addr).join(", "))} and I'll write those chase-ups for you.</p>` : ""}
     <p style="margin:24px 0 0"><a href="${escH(base)}/crm/" style="color:#6f5236;font-weight:600">Open your client book</a></p></div>`;
   const text = [`Follow-ups due: ${due.length}`, ...due.slice(0, 12).map(c => `- ${nm(c)}: ${c.followNote || "Follow up"}`),
     `Call these first: ${callFirst.length}`, ...callFirst.map(({ c }) => `- ${nm(c)} ${c.phone || ""}`),
-    ...dates.map(x => `- ${nm(x.c)}: ${x.label} ${when(x.n)}`), ...dl.map(x => `- ${x.d.addr}: ${x.label} ${when(x.n)}`), `${base}/crm/`].join("\n");
-  const subject = `Your day: ${due.length} follow-up${due.length === 1 ? "" : "s"}${dates.length ? ", " + dates.length + " birthday/anniversary" : ""}${dl.length ? ", " + dl.length + " deal deadline" + (dl.length === 1 ? "" : "s") : ""}`;
+    ...dates.map(x => `- ${nm(x.c)}: ${x.label} ${when(x.n)}`), ...dl.map(x => `- ${x.d.addr}: ${x.label} ${when(x.n)}`),
+    ...paper.map(({ d, miss }) => `- ${d.addr}: ${miss.length} paperwork item${miss.length === 1 ? "" : "s"} missing`),
+    ...(drafted ? [`${drafted} chase-up email${drafted === 1 ? "" : "s"} waiting in your Gmail Drafts`] : []), `${base}/crm/`].join("\n");
+  const subject = `Your day: ${due.length} follow-up${due.length === 1 ? "" : "s"}${dates.length ? ", " + dates.length + " birthday/anniversary" : ""}${dl.length ? ", " + dl.length + " deal deadline" + (dl.length === 1 ? "" : "s") : ""}${paper.length ? ", paperwork on " + paper.length + " deal" + (paper.length === 1 ? "" : "s") : ""}`;
   return { subject, html, text };
 }
 

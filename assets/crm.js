@@ -8,8 +8,182 @@ const STAGES = ["New lead", "Contacted", "Showing homes", "Offer out", "Firm dea
 const SOURCES = ["Home search", "Contact form", "Meta ad", "Google ad", "AgentLocator", "Referral", "Open house", "Instagram", "Past client", "Sphere", "Sign call", "Import", "Other"];
 const KINDS = { call: "Call", text: "Text", email: "Email", showing: "Showing", note: "Note" };
 const KI = { call: "C", text: "T", email: "E", showing: "S", note: "N" };
-const BUY_DOCS = ["Buyer representation agreement", "FINTRAC ID check", "Agreement of purchase and sale", "Deposit delivered", "Financing condition waived", "Inspection condition waived", "Notice of fulfillment signed", "Lawyer details sent", "Closing and commission paid"];
-const SELL_DOCS = ["Listing agreement", "FINTRAC ID check", "Property info and photos", "Listed on MLS", "Offer accepted", "Deposit received", "Conditions waived by buyer", "Lawyer details sent", "Closing and commission paid"];
+// Your brokerage's required paperwork ("Required Deals Paperwork", updated Nov 29, 2024): [key, form, document, one Y per column of reps].
+const PAPER = {
+  "res-sale": { label: "Residential sale or purchase", reps: ["Seller", "Buyer", "Both sides (multiple rep)", "Rep seller/buyer with an SRP", "Self Rep Party - Sale", "Self Rep Party - Purchase", "Referral", "New home (builder)"],
+    docs: [
+      ["agr", "100/101", "Agreement (Residential)", "YYYYYY.."],
+      ["builder", "Builder", "Agreement to Cooperate", ".......Y"],
+      ["brda", "371", "Buyer Designated Rep Agreement", ".YY....."],
+      ["blaw", "", "Buyer's lawyer", ".YYY.Y.."],
+      ["coop", "320", "Confirmation of Cooperation", "YYYYYY.."],
+      ["dep", "", "Deposit Receipt", "YYYYYY.."],
+      ["fin-bi", "630", "Fintrac - Buyer Individual", ".YYY.Y.."],
+      ["fin-bpep", "634", "Fintrac - Buyer Politically Exposed Person", ".YYY.Y.."],
+      ["fin-rof", "635", "Fintrac - Receipt of Funds", ".YYY.Y.."],
+      ["fin-si", "630", "Fintrac - Seller Individual", "Y.YYY..."],
+      ["fin-spep", "634", "Fintrac - Seller Politically Exposed Person", "Y.YYY..."],
+      ["mls", "", "MLS numbers for reporting", "Y.YY...."],
+      ["mr-b", "326", "Multiple Rep Acknowledgement & Consent - Buyer", "..Y....."],
+      ["mr-s", "325", "Multiple Rep Acknowledgement & Consent - Seller", "..Y....."],
+      ["srp-b", "Webforms", "RECO - Info & Disclosure to Self Rep Party - Buyer", "...Y.Y.."],
+      ["srp-s", "Webforms", "RECO - Info & Disclosure to Self Rep Party - Seller", "....Y..."],
+      ["guide-b", "Webforms", "RECO - Info Guide Residential - Buyer", ".YYY.Y.."],
+      ["guide-s", "Webforms", "RECO - Info Guide Residential - Seller", "Y.YYY..."],
+      ["referral", "641/RE/MAX", "Referral Agreement", "......Y."],
+      ["schb", "Office", "Schedule B (only when we hold the deposit)", "Y.YYY..."],
+      ["slaw", "", "Seller's lawyer", "Y.YYY..."],
+      ["trade", "Office", "Trade Sheet", "YYYYYYYY"]] },
+  "res-lease": { label: "Residential lease", reps: ["Landlord only", "Tenant only", "Both sides (multiple rep)", "Lease SRP - Tenant", "Rep landlord/tenant with an SRP", "Lease SRP - Landlord"],
+    docs: [
+      ["agr", "400", "Agreement to Lease", "YYYYYY"],
+      ["coop", "324", "Confirmation of Cooperation", "YYYYYY"],
+      ["dep", "", "Deposit Receipt", "YYYYYY"],
+      ["mls", "", "MLS numbers for reporting", "Y.Y.Y."],
+      ["mr-l", "327", "Multiple Rep - Acknowledgement & Consent Landlord", "..Y..."],
+      ["mr-t", "328", "Multiple Rep - Acknowledgement & Consent Tenant", "..Y..."],
+      ["ota", "Webforms", "Ontario Tenancy Agreement - Residential Leases only", "YYYYYY"],
+      ["srp-l", "Webforms", "RECO - Info & Disclosure to Self Rep Party - Landlord", ".....Y"],
+      ["srp-t", "Webforms", "RECO - Info & Disclosure to Self Rep Party - Tenant", "...YY."],
+      ["guide-l", "Webforms", "RECO - Info Guide Residential - Landlord", "Y.Y.YY"],
+      ["guide-t", "Webforms", "RECO - Info Guide Residential - Tenant", ".YYYY."],
+      ["schb", "Office", "Schedule B (only when we hold the deposit)", "Y.Y.YY"],
+      ["trda", "372", "Tenant Designated Rep Agreement", ".YY..."],
+      ["trade", "Office", "Trade Sheet", "YYYYYY"]] },
+  "com-sale": { label: "Commercial sale or purchase", reps: ["Seller", "Buyer", "Both sides (multiple rep)", "Rep seller/buyer with an SRP", "Self Rep Party - Sale", "Self Rep Party - Purchase"],
+    docs: [
+      ["agr", "500/501/502", "Agreement (Commercial)", "YYYYYY"],
+      ["brc", "596", "Buyer Rep Commercial \"Designated Agent\"", ".YY..."],
+      ["blaw", "", "Buyer's lawyer", ".YYY.Y"],
+      ["coop", "320", "Confirmation of Cooperation", "YYYYYY"],
+      ["dep", "", "Deposit Receipt", "YYYYYY"],
+      ["fin-bbo", "636", "Fintrac - Buyer Beneficial Ownership", ".YYY.Y"],
+      ["fin-bcorp", "631", "Fintrac - Buyer Corporate Fintrac", ".YYY.Y"],
+      ["fin-bi", "630", "Fintrac - Buyer Individual", ".YYY.Y"],
+      ["fin-bpep", "634", "Fintrac - Buyer Politically Exposed Person", ".YYY.Y"],
+      ["fin-bart", "", "Fintrac - Buyer Articles of Incorporation", ".YYY.Y"],
+      ["fin-rof", "635", "Fintrac - Receipt of Funds", ".YYY.Y"],
+      ["fin-scorp", "631", "Fintrac - Seller Corporate Fintrac", "Y.YYY."],
+      ["fin-si", "630", "Fintrac - Seller Individual", "Y.YYY."],
+      ["fin-spep", "634", "Fintrac - Seller Politically Exposed Person", "Y.YYY."],
+      ["fin-sart", "", "Fintrac - Seller Articles of Incorporation", "Y.YYY."],
+      ["fin-sbo", "636", "Fintrac - Seller Beneficial Ownership", "Y.YYY."],
+      ["mls", "", "MLS numbers for reporting", "Y.YY.."],
+      ["mr-b", "326", "Multiple Rep Acknowledgement & Consent - Buyer", "..Y..."],
+      ["mr-s", "325", "Multiple Rep Acknowledgement & Consent - Seller", "..Y..."],
+      ["srp-b", "Webforms", "RECO - Info & Disclosure to Self Rep Party - Buyer", "...Y.Y"],
+      ["srp-s", "Webforms", "RECO - Info & Disclosure to Self Rep Party - Seller", "....Y."],
+      ["guide-b", "Webforms", "RECO - Info Guide Residential - Buyer", ".YYY.Y"],
+      ["guide-s", "Webforms", "RECO - Info Guide Residential - Seller", "Y.YYY."],
+      ["schb", "Office", "Schedule B (only when we hold the deposit)", "Y.YYY."],
+      ["slaw", "", "Seller's lawyer", "Y.YYY."],
+      ["trade", "Office", "Trade Sheet", "YYYYYY"]] },
+  "com-lease": { label: "Commercial lease", reps: ["Landlord only", "Tenant only", "Both sides (double end)", "Lease SRP - Tenant", "Rep landlord/tenant with an SRP", "Lease SRP - Landlord"],
+    docs: [
+      ["agr", "510", "Agreement to Lease", "YYYYYY"],
+      ["coop", "324", "Confirmation of Cooperation", "YYYYYY"],
+      ["dep", "", "Deposit Receipt", "YYYYYY"],
+      ["mls", "", "MLS numbers for reporting", "Y.Y.Y."],
+      ["mr-l", "327", "Multiple Rep - Acknowledgement & Consent - Landlord", "..Y..."],
+      ["mr-t", "328", "Multiple Rep - Acknowledgement & Consent - Tenant", "..Y..."],
+      ["srp-l", "Webforms", "RECO - Info & Disclosure to Self Rep Party - Landlord", ".....Y"],
+      ["srp-t", "Webforms", "RECO - Info & Disclosure to Self Rep Party - Tenant", "...YY."],
+      ["guide-l", "Webforms", "RECO - Info Guide Residential - Landlord", "Y.Y.YY"],
+      ["guide-t", "Webforms", "RECO - Info Guide Residential - Tenant", ".YYYY."],
+      ["schb", "Office", "Schedule B (only when we hold the deposit)", "Y.Y.YY"],
+      ["trc", "597", "Tenant Rep Commercial \"Designated Agent\"", ".YY..."],
+      ["trade", "Office", "Trade Sheet", "YYYYYY"]] }
+};
+// Deal steps that sit under the brokerage list (things to get done, not forms to submit).
+const BUY_STEPS = ["Deposit delivered", "Financing condition waived", "Inspection condition waived", "Notice of fulfillment signed", "Lawyer details sent", "Closing and commission paid"];
+const SELL_STEPS = ["Listing agreement", "Property info and photos", "Listed on MLS", "Offer accepted", "Deposit received", "Conditions waived by buyer", "Lawyer details sent", "Closing and commission paid"];
+const LEASE_STEPS = ["Deposit delivered", "Lease signed by everyone", "Keys and move-in arranged", "Commission paid"];
+const isLease = d => /lease/.test(d.kind || "");
+const sideOf = d => d.side === "Seller" ? "s" : "b";
+const partyOf = d => isLease(d) ? (d.side === "Seller" ? "l" : "t") : sideOf(d);
+const defaultRep = d => d.side === "Seller" ? 0 : 1;
+const paperFor = d => PAPER[d.kind] ? PAPER[d.kind].docs.filter(x => x[3][+d.rep] === "Y") : [];
+// Who the chase-up email for a missing item goes to: the other agent (only when there is one) or your own client.
+function askFor(d, k) {
+  const s = sideOf(d), single = [0, 1].includes(+d.rep);
+  if (single && (k === "agr" || k === "coop" || (k === "dep" && s === "b"))) return "agent";
+  if ((k === "blaw" && s === "b") || (k === "slaw" && s === "s") || k === "fin-" + s + "i" || k === "fin-" + s + "pep") return "client";
+  return "";
+}
+// Rebuild the brokerage part of a deal's checklist for its deal type and who you represent. Ticks, files and your
+// own steps are kept; a ticked item that no longer applies moves down to the steps instead of disappearing.
+function syncPaperwork(d) {
+  if (!PAPER[d.kind]) return;
+  if (!(+d.rep < PAPER[d.kind].reps.length)) d.rep = defaultRep(d);
+  const docs = d.docs || [], old = docs.filter(x => x.req), steps = docs.filter(x => !x.req);
+  const want = paperFor(d), keys = want.map(x => x[0]);
+  const req = want.map(([k, f, nm]) => { const o = old.find(x => x.k === k) || { done: false, req: 1, k }; o.d = nm; o.f = f; o.ask = askFor(d, k); return o; });
+  const kept = old.filter(x => !keys.includes(x.k) && x.done).map(x => ({ d: x.d, done: true }));
+  d.docs = [...req, ...kept, ...steps];
+  autoTick(d);
+}
+function autoTick(d) {
+  const set = (k, why) => { const x = (d.docs || []).find(y => y.req && y.k === k); if (x && !x.done) { x.done = true; x.by = why; } };
+  if (d.mls) set("mls", "MLS number is on the deal");
+  if (d.lawyer) set(sideOf(d) === "b" ? "blaw" : "slaw", "Lawyer is on the deal");
+  if (d.lawyer2) set(sideOf(d) === "b" ? "slaw" : "blaw", "Lawyer is on the deal");
+}
+// Open deals made before the brokerage list get it once. Old items that match a form carry their tick across.
+function migrateDeals() {
+  let n = 0;
+  for (const d of db.deals) {
+    if (d.kind || d.status === "Closed") continue;
+    d.kind = "res-sale"; d.rep = defaultRep(d);
+    const old = d.docs || [], carry = {};
+    for (const [nm, k] of [["Buyer representation agreement", "brda"], ["Agreement of purchase and sale", "agr"], ["FINTRAC ID check", "fin-" + sideOf(d) + "i"]]) {
+      const i = old.findIndex(x => x.d === nm); if (i < 0) continue; if (old[i].done) carry[k] = true; old.splice(i, 1); }
+    d.docs = old; syncPaperwork(d);
+    d.docs.forEach(x => { if (x.req && carry[x.k]) x.done = true; });
+    (d.ups = d.ups || []).unshift({ t: nowISO(), src: "note", x: "Paperwork list set to your brokerage's required documents (residential, " + PAPER[d.kind].reps[d.rep].toLowerCase() + "). Change the deal type on the deal if that's not right." });
+    n++;
+  }
+  return n;
+}
+// Which checklist item a document is, from its file name (or the email subject when it was the only attachment).
+const pty = (t, d) => /tenant/.test(t) ? "t" : /landlord/.test(t) ? "l" : /buyer|purchaser/.test(t) ? (isLease(d) ? "t" : "b") : /seller|vendor/.test(t) ? (isLease(d) ? "l" : "s") : partyOf(d);
+const bs = (t, d) => /buyer|purchaser/.test(t) ? "b" : /seller|vendor/.test(t) ? "s" : sideOf(d);
+const DOC_RULES = [
+  [/schedule[\s_-]*b\b/, () => "schb"],
+  [/trade[\s_-]*(record[\s_-]*)?sheet/, () => "trade"],
+  [/confirmation[\s_-]*of[\s_-]*co-?op|\bcoc\b|form[\s_#-]*32[04]\b/, () => "coop"],
+  [/articles[\s_-]*of[\s_-]*incorp/, (t, d) => "fin-" + bs(t, d) + "art"],
+  [/fintrac|form[\s_#-]*63[0-6]\b|\bid[\s_-]*(check|verif)|identification/, (t, d) => { const w = bs(t, d);
+    return /pep|politically|\b634\b/.test(t) ? "fin-" + w + "pep" : /receipt[\s_-]*of[\s_-]*funds|\b635\b/.test(t) ? "fin-rof" : /beneficial|\b636\b/.test(t) ? "fin-" + w + "bo" : /corporat|\b631\b/.test(t) ? "fin-" + w + "corp" : "fin-" + w + "i"; }],
+  [/multiple[\s_-]*rep|form[\s_#-]*32[5-8]\b/, (t, d) => "mr-" + pty(t, d)],
+  [/self[\s_-]*rep|\bsrp\b|info(rmation)?[\s_-]*(&|and)[\s_-]*disclosure/, (t, d) => "srp-" + pty(t, d)],
+  [/info(rmation)?[\s_-]*guide|\breco\b/, (t, d) => "guide-" + pty(t, d)],
+  [/referral/, () => "referral"],
+  [/agreement[\s_-]*to[\s_-]*co-?operate|builder/, () => "builder"],
+  [/tenant[\s_-]*(designated[\s_-]*)?rep|form[\s_#-]*(372|597)\b/, (t, d) => /com/.test(d.kind) ? "trc" : "trda"],
+  [/buyer[\s_-]*(designated[\s_-]*)?rep|buyer[\s_-]*representation|\bbra\b|\bbrda\b|form[\s_#-]*(371|596)\b/, (t, d) => /com/.test(d.kind) ? "brc" : "brda"],
+  [/standard[\s_-]*(form[\s_-]*of[\s_-]*)?lease|tenancy[\s_-]*agreement|form[\s_#-]*2229/, () => "ota"],
+  [/deposit|bank[\s_-]*draft|wire[\s_-]*confirm/, () => "dep"],
+  [/\baps\b|agreement[\s_-]*of[\s_-]*purchase|purchase[\s_-]*(and|&)[\s_-]*sale|agreement[\s_-]*to[\s_-]*lease|\batl\b|form[\s_#-]*(100|101|400|500|501|502|510)\b|accepted[\s_-]*offer|signed[\s_-]*offer/, () => "agr"],
+];
+function matchDoc(d, text) {
+  const t = String(text || "").toLowerCase();
+  if (!t) return null;
+  for (const [re, fn] of DOC_RULES) if (re.test(t)) { const k = fn(t, d), x = (d.docs || []).find(y => y.req && y.k === k && !y.done) || (d.docs || []).find(y => y.req && y.k === k); if (x) return x; }
+  return null;
+}
+// A document arrived (uploaded or from Gmail): keep it on the deal and tick the checklist item it matches.
+function fileArrived(d, f, src = {}) {
+  d.files = d.files || []; d.ups = d.ups || [];
+  if (d.files.some(x => x.id === f.id)) return null;
+  d.files.push(f);
+  const x = matchDoc(d, f.name) || (src.single ? matchDoc(d, src.subject) : null);
+  const ticked = x && !x.done ? x : null;
+  if (ticked) { ticked.done = true; ticked.got = { file: f.id, name: f.name, from: src.from || "", t: f.t }; delete ticked.by; }
+  d.ups.unshift({ t: f.t || nowISO(), src: src.from ? "email" : "note", x: (src.from ? "Filed " + f.name + " from an email by " + src.from : "Attached " + f.name) + (ticked ? " and ticked " + ticked.d : "") });
+  return ticked;
+}
+const paperMissing = d => (d.docs || []).filter(x => x.req && !x.done);
+const paperDue = d => ["Conditional", "Firm"].includes(d.status) || (d.status === "Closed" && (d.close || "") >= rel(-60));
 const DSTAT = ["Listing", "Offer in", "Conditional", "Firm", "Closed"];
 const DAY = 864e5;
 const VIEWS = ["today", "pipeline", "deals", "meta", "contacts", "import"];
@@ -53,8 +227,9 @@ async function fetchBook() {
   db = r.body.db || { contacts: [], deals: [], meta: [], v: 1 };
   db.contacts = db.contacts || []; db.deals = db.deals || []; db.meta = db.meta || [];
   etag = r.body.etag;
+  const moved = migrateDeals();
   const n = foldInbox(r.body.inbox || []);
-  if (fresh || (r.body.inbox || []).length) queueSave(0);
+  if (fresh || moved || (r.body.inbox || []).length) queueSave(0);
   if (n) toast(n === 1 ? "1 new lead came in" : n + " new leads came in");
   return true;
 }
@@ -77,6 +252,19 @@ function foldInbox(items) {
       }
       db.mail.recent = db.mail.recent.slice(0, 12);
       n--; continue;
+    }
+    if (it.kind === "file") {
+      n--; const d = db.deals.find(x => x.id === it.deal); if (!d) continue;
+      fileArrived(d, { id: it.fid, name: it.name || "Attachment", size: it.size || 0, type: it.type || "", t: it.date || it.received || nowISO(), via: "email" }, { from: shortFrom(it.from || ""), subject: it.subject || "", single: !!it.single });
+      continue;
+    }
+    if (it.kind === "chase") {
+      n--;
+      for (const c of it.items || []) { const d = db.deals.find(x => x.id === c.deal); if (!d) continue;
+        const names = []; (d.docs || []).forEach(x => { if (x.req && (c.docs || []).includes(x.k)) { x.chased = { who: c.who, t: it.received }; names.push(x.d); } });
+        d.chaseDone = it.received;
+        (d.ups = d.ups || []).unshift({ t: it.received, src: "email", x: "Wrote a chase-up email to " + c.who + " (" + c.to + ") asking for: " + names.join(", ") + ". It's waiting in your Gmail Drafts." }); }
+      continue;
     }
     if (it.kind === "meta" || it.kind === "google") {
       db.meta.push({ id: uid(), first: it.first || "", last: it.last || "", phone: it.phone || "", email: it.email || "", ad: it.ad || "", campaign: it.campaign || "", t: it.received || nowISO(), a: it.answers || {}, isNew: true, auto: true, via: it.kind === "google" ? "Google" : "Meta" });
@@ -276,6 +464,7 @@ function renderToday() {
         <div class="side"><span class="pill ${webSrc(c.source) ? "web" : ""}">${esc(c.source)}</span></div></div>`).join("") : `<p class="empty">No new leads right now.</p>`}</div>
       <div class="sec-h"><h2>Deals to watch</h2></div>
       <div class="card list">${dealsToWatch()}</div>
+      ${paperCard()}
       <div class="sec-h"><h2>From your inbox</h2></div>
       ${inboxCard()}
     </div>
@@ -296,6 +485,15 @@ function checkInCard() {
     <div class="who"><b>${esc(name(c))}</b><small>${lt ? "Last contact " + timeAgo(lt) : "No contact logged yet"}</small></div>
     <div class="side"><button class="btn small" data-checkin="${c.id}">Plan a check-in</button></div></div>`; }).join("")
     : `<p class="empty">Every past client has been in touch in the last ${CHECKIN_DAYS} days.</p>`;
+}
+function paperCard() {
+  const ds = db.deals.filter(paperDue).map(d => ({ d, miss: paperMissing(d) })).filter(x => x.miss.length);
+  if (!ds.length) return "";
+  return `<div class="sec-h"><h2>Paperwork to finish</h2><span class="meta">For your brokerage</span></div>
+  <div class="card list">${ds.map(({ d, miss }) => { const asked = miss.filter(x => x.chased).length;
+    return `<div class="row wrap" data-deal="${d.id}" tabindex="0"><div class="av">${miss.length}</div>
+    <div class="who"><b>${esc(d.addr || "Untitled property")}</b><small>${esc(miss.slice(0, 3).map(x => x.d).join(", "))}${miss.length > 3 ? " and " + (miss.length - 3) + " more" : ""}${asked ? " · " + asked + " asked for" : ""}</small></div>
+    <div class="side"><span class="pill ${stCls(d.status)}">${d.status}</span></div></div>`; }).join("")}</div>`;
 }
 function callFirstCard() {
   const xs = callFirstList().slice(0, 8);
@@ -332,7 +530,7 @@ async function openConnections() {
   openPanel(); sheet.querySelector(".x").onclick = () => closeSheet();
   const r = await api("setup");
   if (r.status !== 200) { sheet.querySelector("p").textContent = "Couldn't load your connection details. Try again in a moment."; return; }
-  const { key, base, alertsLast, summaryLast } = r.body;
+  const { key, base, alertsLast, summaryLast, chaseLast } = r.body;
   const ago2 = t => t ? new Date(t).toLocaleString("en-CA", { weekday: "short", hour: "numeric", minute: "2-digit" }) : "";
   const dot = on => on ? "" : 'style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"';
   const googleMeta = db.meta.filter(x => x.via === "Google").length;
@@ -341,13 +539,14 @@ async function openConnections() {
   sheet.innerHTML = `<div class="sheet-h"><h2>Connections</h2><button class="x" aria-label="Close">×</button></div>
   <div class="card box"><div class="inbox-h"><span class="dot" ${m && m.last ? "" : 'style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"'}></span><h3>Gmail check, lead alerts, morning summary</h3>
     <span class="meta">${m && m.last ? "Last ran " + esc(new Date(m.last).toLocaleString("en-CA", { weekday: "short", hour: "numeric", minute: "2-digit" })) : "Not connected"}</span></div>
-    <p class="muted" style="font-size:14px">One small script runs inside your own Google account and does three jobs. Nobody else gets access to your Gmail.</p>
+    <p class="muted" style="font-size:14px">One small script runs inside your own Google account and does these jobs. Nobody else gets access to your Gmail.</p>
     <ul class="jobs">
-      <li><b>Email check</b>, 8 AM and 2 PM: finds emails about your open deals (street address, MLS number or your client's email) and adds the sender, subject and first lines to the deal.</li>
+      <li><b>Email check</b>, 8 AM and 2 PM: finds emails about your open deals (street address, MLS number or your client's email) and adds the sender, subject and first lines to the deal. Documents attached to those emails are filed on the deal and ticked off your brokerage list.</li>
+      <li><b>Paperwork chase-ups</b>, each morning for conditional and firm deals (or when you ask on a deal): writes emails to the other agent or your client for missing paperwork and leaves them in your Gmail Drafts. Nothing is sent without you. <span class="dot-l"><span class="dot" ${dot(chaseLast)}></span>${chaseLast ? "Last ran " + esc(ago2(chaseLast)) : "Not running yet"}</span></li>
       <li><b>New-lead alert</b>, every 5 minutes: when a lead comes in from your website, Meta or Google, you get an email with their name, phone and answers. Turn on Gmail notifications on your phone to hear it right away. <span class="dot-l"><span class="dot" ${dot(alertsLast)}></span>${alertsLast ? "Last checked " + esc(ago2(alertsLast)) : "Not running yet"}</span></li>
       <li><b>Morning summary</b>, 7 AM: today's follow-ups, who to call first, birthdays and anniversaries, and deal deadlines this week. <span class="dot-l"><span class="dot" ${dot(summaryLast)}></span>${summaryLast ? "Last sent " + esc(ago2(summaryLast)) : "Not sent yet"}</span></li>
     </ul>
-    ${m && m.last && !alertsLast ? `<p class="note">You set up the email check before alerts and the summary were added. Copy the new script below, paste it over the old one in the same Apps Script project, save, and run <b>setup</b> once more.</p>` : ""}
+    ${m && m.last && !chaseLast ? `<p class="note">You set up the email check before the newest jobs were added. Copy the new script below, paste it over the old one in the same Apps Script project, save, and run <b>setup</b> once more.</p>` : ""}
     <ol class="steps">
       <li>On a computer, signed in to the Gmail you use for work, open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a>. A new project opens.</li>
       <li>Delete what's in the editor, then tap <b>Copy script</b> below and paste it in.</li>
@@ -408,6 +607,8 @@ function gmailScript(base, key) {
 //    sender, subject and first lines to your client book. Nothing else leaves Gmail.
 // 2. New-lead alerts every 5 minutes, sent to you from your own Gmail.
 // 3. A morning summary at about 7 AM.
+// 4. Paperwork: documents attached to emails about a deal are filed on that deal, and chase-up emails for missing
+//    paperwork are left in your Gmail Drafts. This script never sends anything except emails to yourself.
 const CRM = "${base}/hook";
 const KEY = "${key}";
 
@@ -435,12 +636,34 @@ function checkInbox() {
         seen[d.id + id] = true;
         items.push({ deal: d.id, id: id, from: m.getFrom(), subject: m.getSubject(),
           snippet: m.getPlainBody().replace(/\\s+/g, " ").slice(0, 300), date: m.getDate().toISOString() });
+        fileAttachments(d.id, m);
       });
     });
   });
   UrlFetchApp.fetch(CRM + "/email", { method: "post", contentType: "application/json", headers: { "x-crm-key": KEY },
     payload: JSON.stringify({ items: items.slice(0, 150), checkedAt: new Date(started).toISOString() }) });
   props.setProperty("since", String(started));
+}
+
+// Documents (PDF, Word, photos up to 5 MB) attached to an email about a deal go onto that deal.
+function fileAttachments(dealId, m) {
+  const atts = m.getAttachments({ includeInlineImages: false }).filter(function (a) {
+    const t = a.getContentType(), n = a.getSize();
+    return n <= 5242880 && (/pdf|word|officedocument|msword/.test(t) || (/^image\\//.test(t) && n > 40000));
+  });
+  atts.forEach(function (a) {
+    UrlFetchApp.fetch(CRM + "/file", { method: "post", contentType: a.getContentType(), payload: a.copyBlob().getBytes(), muteHttpExceptions: true,
+      headers: { "x-crm-key": KEY, "x-deal": dealId, "x-file-name": encodeURIComponent(a.getName()), "x-msg": m.getId(), "x-from": encodeURIComponent(m.getFrom()),
+        "x-subject": encodeURIComponent(m.getSubject()), "x-date": m.getDate().toISOString(), "x-count": String(atts.length) } });
+  });
+}
+
+// Chase-up emails for missing paperwork, left in Drafts for you to check and send.
+function chaseDrafts(daily) {
+  const res = UrlFetchApp.fetch(CRM + "/chase" + (daily ? "?daily=1" : ""), { headers: { "x-crm-key": KEY } });
+  const list = JSON.parse(res.getContentText()).drafts || [];
+  list.forEach(function (x) { GmailApp.createDraft(x.to, x.subject, x.body); });
+  return list.length;
 }
 
 // Every 5 minutes: email you about each new lead from your website, Meta or Google ads.
@@ -464,11 +687,13 @@ function alertNewLeads() {
       (tel ? '<p><a href="tel:' + tel + '">Call ' + nm + " now</a></p>" : "") + '<p><a href="' + data.crm + '">Open your client book</a></p>';
     MailApp.sendEmail({ to: me, subject: "New lead: " + nm + " (" + (from[l.kind] || "website") + ")", body: nm + "\\n" + lines.join("\\n") + "\\n" + data.crm, htmlBody: html });
   });
+  chaseDrafts(false);
 }
 
 // 7 AM: your day in one email.
 function morningSummary() {
-  const res = UrlFetchApp.fetch(CRM + "/summary", { headers: { "x-crm-key": KEY } });
+  const drafted = chaseDrafts(true);
+  const res = UrlFetchApp.fetch(CRM + "/summary?drafted=" + drafted, { headers: { "x-crm-key": KEY } });
   const s = JSON.parse(res.getContentText());
   MailApp.sendEmail({ to: Session.getEffectiveUser().getEmail(), subject: s.subject, body: s.text, htmlBody: s.html });
 }
@@ -850,7 +1075,7 @@ function renderDeals() {
       <div class="top-l"><span class="pill ${stCls(d.status)}">${d.status}</span><span class="pill ${d.side === "Seller" ? "seller" : "buyer"}">${d.side === "Seller" ? "Selling" : "Buying"}</span></div>
       <div><div class="addr">${esc(d.addr || "Untitled property")}</div><div class="sub">${esc([d.area, c ? name(c) : ""].filter(Boolean).join(" · "))}</div></div>
       <div class="price">${d.price ? money(d.price) : d.list ? "List " + money(d.list) : "No price yet"}${commission(d) ? `<span class="comm">${d.status === "Closed" ? "Earned" : "Commission"} ${money(commission(d))}</span>` : ""}</div>
-      <div><div class="bar-l"><span>Paperwork</span><span>${done} of ${docs.length}</span></div><div class="bar"><i style="width:${docs.length ? done / docs.length * 100 : 0}%"></i></div></div>
+      <div><div class="bar-l"><span>Paperwork${docs.some(x => x.req) ? ` <em class="miss">${paperMissing(d).length ? paperMissing(d).length + " brokerage item" + (paperMissing(d).length > 1 ? "s" : "") + " missing" : "brokerage list complete"}</em>` : ""}</span><span>${done} of ${docs.length}</span></div><div class="bar"><i style="width:${docs.length ? done / docs.length * 100 : 0}%"></i></div></div>
       <div class="next">${k[1] ? `<span class="pill ${n !== null && n >= 0 && n <= 3 && d.status !== "Closed" ? "due" : ""}">${k[0]}: ${inDays(n)}</span>` : ""}<span class="muted">Next: ${esc(nextStep(d))}</span></div>
     </button>`; }).join("") : `<p class="empty">${db.deals.length ? "No deals in this list." : "No deals yet. Add the first property you're working on with + New deal."}</p>`}</div>
   ${inboxCard()}`;
@@ -874,6 +1099,14 @@ function drawDeal(id) {
   const d = db.deals.find(x => x.id === id); if (!d) return closeSheet();
   d.docs = d.docs || []; d.ups = d.ups || [];
   const done = d.docs.filter(x => x.done).length, pct = d.docs.length ? Math.round(done / d.docs.length * 100) : 0;
+  const reqDocs = d.docs.filter(x => x.req), stepDocs = d.docs.filter(x => !x.req);
+  const chaseable = reqDocs.filter(x => !x.done && x.ask && (x.ask === "client" ? byId(d.client) && byId(d.client).email : /@/.test(d.otherAgent || "")));
+  const chasing = d.chaseNow && !(d.chaseDone > d.chaseNow), allChased = chaseable.length && chaseable.every(x => x.chased);
+  const docRow = x => { const i = d.docs.indexOf(x), f = x.got && (d.files || []).find(y => y.id === x.got.file);
+    const note = x.done && x.got ? (x.got.from ? "From " + esc(x.got.from) + "'s email: " : "Uploaded: ") + (f ? `<a href="/api/crm/files/${d.id}/${f.id}" target="_blank" rel="noopener">${esc(x.got.name)}</a>` : esc(x.got.name))
+      : x.done && x.by ? esc(x.by) : !x.done && x.chased ? "Chase-up drafted to " + esc(x.chased.who) + " " + dLabel(x.chased.t.slice(0, 10)) : "";
+    const form = x.f ? `<em class="form">${x.f === "Office" ? "Office form" : x.f === "Webforms" || x.f === "Builder" ? esc(x.f) : "Form " + esc(x.f)}</em>` : "";
+    return `<label class="doc ${x.done ? "done" : ""}"><input type="checkbox" data-doc="${i}" ${x.done ? "checked" : ""}><span><i class="nm">${esc(x.d)}</i>${form}${note ? `<small>${note}</small>` : ""}</span>${x.req ? (x.done ? "" : `<button type="button" class="x-sm na" data-nadoc="${i}" aria-label="${esc(x.d)} is not needed on this deal">Not needed</button>`) : `<button type="button" class="x-sm" data-rmdoc="${i}" aria-label="Remove ${esc(x.d)}">×</button>`}</label>`; };
   const dt = (l, v) => { const n = daysTo(v); return `<div class="${n !== null && n >= 0 && n <= 3 && d.status !== "Closed" ? "soon" : ""}"><small>${l}</small><b>${dLabel(v)}</b><em>${inDays(n)}</em></div>`; };
   const clients = db.contacts.slice().sort((a, b) => name(a).localeCompare(name(b)));
   const del = confirmRow("Remove this deal", () => { (d.files || []).forEach(f => fetch("/api/crm/files/" + d.id + "/" + f.id, { method: "DELETE", credentials: "same-origin" }));
@@ -904,10 +1137,20 @@ function drawDeal(id) {
     ${commission(d) ? `<p class="muted" style="font-size:13px">${d.status === "Closed" ? "Earned" : "Expected"}: <b style="color:var(--ink)">${money(commission(d))}</b>${d.commPct && !d.commAmt ? " (" + d.commPct + "% of " + money(dealValue(d)) + ")" : ""}</p>` : ""}
     <div class="grid2"><div class="field"><label for="d-otherag">Other agent</label><input id="d-otherag" value="${esc(d.otherAgent)}" placeholder="Name, brokerage, phone"></div>
     <div class="field"><label for="d-lawyer">Client's lawyer</label><input id="d-lawyer" value="${esc(d.lawyer)}" placeholder="Name, phone, email"></div></div>
+    ${+d.rep === 2 ? `<div class="field"><label for="d-lawyer2">Other side's lawyer</label><input id="d-lawyer2" value="${esc(d.lawyer2)}" placeholder="Name, phone, email"></div>` : ""}
+    ${(d.docs || []).some(x => x.req && !x.done && x.ask === "agent") && !/@/.test(d.otherAgent || "") ? `<p class="note">Add the other agent's email above and I'll write the chase-up emails for missing paperwork for you.</p>` : ""}
     ${k[1] && d.status !== "Closed" ? `<div><a class="btn ghost" style="padding-left:0" target="_blank" rel="noopener" href="${calLink(k[0] + ": " + (d.addr || ""), k[1], (d.area || ""))}">Add ${k[0].toLowerCase()} to Google Calendar</a></div>` : ""}
   </div>
   <div class="card box"><h3>Paperwork</h3><div class="bar-l"><span>${done} of ${d.docs.length} done</span><span>${pct}%</span></div><div class="bar"><i style="width:${pct}%"></i></div>
-    <div class="docs">${d.docs.map((x, i) => `<label class="doc ${x.done ? "done" : ""}"><input type="checkbox" data-doc="${i}" ${x.done ? "checked" : ""}><span>${esc(x.d)}</span><button type="button" class="x-sm" data-rmdoc="${i}" aria-label="Remove ${esc(x.d)}">×</button></label>`).join("")}</div>
+    <div class="grid2"><div class="field"><label for="d-kind">Deal type</label><select id="d-kind">${d.kind ? "" : '<option value="" selected>Choose the deal type</option>'}${Object.entries(PAPER).map(([k, t]) => `<option value="${k}"${k === d.kind ? " selected" : ""}>${t.label}</option>`).join("")}</select></div>
+    <div class="field"><label for="d-rep">You represent</label><select id="d-rep" ${d.kind ? "" : "disabled"}>${(PAPER[d.kind] || PAPER["res-sale"]).reps.map((r, i) => `<option value="${i}"${i === +d.rep ? " selected" : ""}>${esc(r)}</option>`).join("")}</select></div></div>
+    ${reqDocs.length ? `<div class="doc-h"><b>For your brokerage</b><span>${reqDocs.filter(x => x.done).length} of ${reqDocs.length}</span></div>
+    <div class="docs">${reqDocs.map(docRow).join("")}</div>
+    ${chaseable.length ? `<div class="chase"><button class="btn small" id="d-chase">${chasing ? "Drafts on the way" : allChased ? "Write them again" : "Write chase-up emails"}</button><span class="muted">${chasing ? "They'll be in your Gmail Drafts within 5 minutes."
+      : allChased ? "Chase-up emails for these are waiting in your Gmail Drafts. Nothing was sent."
+      : "For " + chaseable.length + " missing item" + (chaseable.length > 1 ? "s" : "") + ". They go to your Gmail Drafts for you to check. Nothing is sent. Conditional and firm deals get them each morning anyway."}</span></div>` : ""}
+    <div class="doc-h"><b>Deal steps</b><span>${stepDocs.filter(x => x.done).length} of ${stepDocs.length}</span></div>` : ""}
+    <div class="docs">${stepDocs.map(docRow).join("")}</div>
     <div class="inline-add"><input id="d-newdoc" placeholder="Add a document or step" aria-label="Add a document or step"><button class="btn" id="d-adddoc">Add</button></div></div>
   <div class="card box"><h3>Documents</h3>
     <div class="files">${(d.files || []).map((f, i) => `<div class="file"><span class="fi">${esc((f.name.split(".").pop() || "").slice(0, 4).toUpperCase())}</span>
@@ -919,14 +1162,20 @@ function drawDeal(id) {
   ${del.html}`;
   const $ = s => sheet.querySelector(s);
   $(".x").onclick = () => closeSheet();
-  const redraw = new Set(["addr", "area", "status", "side", "client", "offer", "cond", "close", "live"]);
+  const redraw = new Set(["addr", "area", "status", "side", "client", "offer", "cond", "close", "live", "mls", "lawyer", "lawyer2", "otherAgent"]);
   const bind = (sel, key, fn) => { $(sel).onchange = e => { const old = d[key]; d[key] = fn ? fn(e.target.value) : e.target.value.trim();
     if (key === "status" && old !== d[key]) d.ups.unshift({ t: nowISO(), src: "note", x: "Status changed from " + old + " to " + d[key] });
+    if (key === "side" && PAPER[d.kind]) { d.rep = defaultRep(d); syncPaperwork(d); }
+    if (["mls", "lawyer", "lawyer2"].includes(key)) autoTick(d);
     save(); if (redraw.has(key)) drawDeal(id); else if (fn === num) e.target.value = d[key] ? money(d[key]) : ""; }; };
   bind("#d-addr", "addr"); bind("#d-area", "area"); bind("#d-mls", "mls"); bind("#d-client", "client", v => v || null); bind("#d-side", "side");
   bind("#d-st", "status"); bind("#d-list", "list", num); bind("#d-pr", "price", num); bind("#d-dep", "dep", num);
   bind("#d-offer", "offer", v => v || null); bind("#d-cond", "cond", v => v || null); bind("#d-close", "close", v => v || null); bind("#d-live", "live", v => v || null);
-  bind("#d-otherag", "otherAgent"); bind("#d-lawyer", "lawyer");
+  bind("#d-otherag", "otherAgent"); bind("#d-lawyer", "lawyer"); if ($("#d-lawyer2")) bind("#d-lawyer2", "lawyer2");
+  $("#d-kind").onchange = e => { if (!e.target.value) return; const was = d.kind; d.kind = e.target.value; if (was !== d.kind) d.rep = defaultRep(d); syncPaperwork(d);
+    d.ups.unshift({ t: nowISO(), src: "note", x: "Deal type set to " + PAPER[d.kind].label.toLowerCase() }); save(); drawDeal(id); };
+  $("#d-rep").onchange = e => { d.rep = +e.target.value; syncPaperwork(d); save(); drawDeal(id); };
+  if ($("#d-chase")) $("#d-chase").onclick = () => { d.chaseNow = nowISO(); save(); drawDeal(id); toast("Chase-up emails will be in your Gmail Drafts within 5 minutes"); };
   $("#d-cpct").onchange = e => { d.commPct = parseFloat(String(e.target.value).replace(/[^\d.]/g, "")) || 0; save(); drawDeal(id); };
   $("#d-camt").onchange = e => { d.commAmt = num(e.target.value); save(); drawDeal(id); };
   $("#d-file").onchange = async e => { for (const f of e.target.files) await uploadFile(d, f); drawDeal(id); };
@@ -934,7 +1183,8 @@ function drawDeal(id) {
     if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Remove?"; return; }
     await fetch("/api/crm/files/" + d.id + "/" + f.id, { method: "DELETE", credentials: "same-origin" }); d.files.splice(+b.dataset.rmfile, 1);
     d.ups.unshift({ t: nowISO(), src: "note", x: "Removed document " + f.name }); save(); drawDeal(id); });
-  sheet.querySelectorAll("[data-doc]").forEach(b => b.onchange = () => { d.docs[+b.dataset.doc].done = b.checked; save(); drawDeal(id); });
+  sheet.querySelectorAll("[data-doc]").forEach(b => b.onchange = () => { const x = d.docs[+b.dataset.doc]; x.done = b.checked; if (!b.checked) { delete x.by; delete x.got; } save(); drawDeal(id); });
+  sheet.querySelectorAll("[data-nadoc]").forEach(b => b.onclick = e => { e.preventDefault(); const x = d.docs[+b.dataset.nadoc]; x.done = true; x.by = "Marked not needed on this deal"; save(); drawDeal(id); });
   sheet.querySelectorAll("[data-rmdoc]").forEach(b => b.onclick = e => { e.preventDefault(); d.docs.splice(+b.dataset.rmdoc, 1); save(); drawDeal(id); });
   const addDoc = () => { const v = $("#d-newdoc").value.trim(); if (!v) return; d.docs.push({ d: v, done: false }); save(); drawDeal(id); $("#d-newdoc").focus(); };
   $("#d-adddoc").onclick = addDoc; $("#d-newdoc").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); addDoc(); } };
@@ -952,8 +1202,8 @@ async function uploadFile(d, f) {
       headers: { "content-type": f.type || "application/octet-stream", "x-file-name": encodeURIComponent(f.name) } });
     if (r.status === 401) { showSignin(); return; }
     if (!r.ok) throw new Error(r.status);
-    (d.files = d.files || []).push({ id: fid, name: f.name, size: f.size, type: f.type, t: nowISO() });
-    d.ups.unshift({ t: nowISO(), src: "note", x: "Attached " + f.name }); save(); toast(f.name + " attached");
+    const ticked = fileArrived(d, { id: fid, name: f.name, size: f.size, type: f.type, t: nowISO() });
+    save(); toast(ticked ? f.name + " attached and " + ticked.d + " ticked" : f.name + " attached");
   } catch (e) { toast("Couldn't upload " + f.name + ". Try again."); }
 }
 
@@ -966,15 +1216,17 @@ function newDeal(clientId) {
   <div class="field"><label for="nd-area">Neighbourhood</label><input id="nd-area"></div>
   <div class="grid2"><div class="field"><label for="nd-client">Client</label><select id="nd-client"><option value="">No client yet</option>${clients.map(c => `<option value="${c.id}"${c.id === clientId ? " selected" : ""}>${esc(name(c))}</option>`).join("")}</select></div>
   <div class="field"><label for="nd-side">You're</label><select id="nd-side"><option value="Buyer"${pre && pre.type === "Seller" ? "" : " selected"}>Buying for them</option><option value="Seller"${pre && pre.type === "Seller" ? " selected" : ""}>Selling for them</option></select></div>
+  <div class="field"><label for="nd-kind">Deal type</label><select id="nd-kind">${Object.entries(PAPER).map(([k, t]) => `<option value="${k}">${t.label}</option>`).join("")}</select></div>
   <div class="field"><label for="nd-st">Status</label><select id="nd-st">${opt(DSTAT, "Offer in")}</select></div>
   <div class="field"><label for="nd-list">List price</label><input id="nd-list" inputmode="numeric"></div></div>
-  <p class="muted" style="font-size:13px">A paperwork checklist for ${"buyers or sellers"} is added for you. You can add or remove steps any time.</p>
+  <p class="muted" style="font-size:13px">Your brokerage's required paperwork for this kind of deal is added for you, plus the usual deal steps. You can change who you represent on the deal, and add or remove steps any time.</p>
   <div><button class="btn primary" type="submit">Add deal</button></div></form>`;
   openPanel();
   sheet.querySelector(".x").onclick = () => closeSheet();
   sheet.querySelector("#ndF").onsubmit = e => { e.preventDefault(); const v = s => sheet.querySelector(s).value.trim(); const side = v("#nd-side");
     const d = { id: uid(), client: v("#nd-client") || null, side, addr: v("#nd-addr"), area: v("#nd-area"), status: v("#nd-st"), price: 0, list: num(v("#nd-list")), offer: v("#nd-st") === "Offer in" ? rel(0) : null, cond: null, close: null,
-      docs: (side === "Buyer" ? BUY_DOCS : SELL_DOCS).map(x => ({ d: x, done: false })), ups: [], created: nowISO() };
+      kind: v("#nd-kind"), docs: (/lease/.test(v("#nd-kind")) ? LEASE_STEPS : side === "Buyer" ? BUY_STEPS : SELL_STEPS).map(x => ({ d: x, done: false })), ups: [], created: nowISO() };
+    d.rep = defaultRep(d); syncPaperwork(d);
     db.deals.unshift(d); save(); toast("Deal added"); openDeal(d.id); };
 }
 

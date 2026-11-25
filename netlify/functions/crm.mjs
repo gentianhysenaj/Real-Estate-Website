@@ -6,10 +6,13 @@
 //   POST /api/crm/lead    (header x-crm-key) -> adds a lead from Make/Zapier (Meta lead ads)
 //   GET  /api/crm/hook/deals, POST /api/crm/hook/email (header x-crm-key) -> the twice-daily Gmail check
 //   GET  /api/crm/hook/alerts, GET /api/crm/hook/summary (header x-crm-key) -> new-lead alerts and the morning email
+//   POST /api/crm/hook/file (header x-crm-key) -> a document from an email about a deal, filed on that deal
+//   GET  /api/crm/hook/chase  (header x-crm-key) -> chase-up emails for missing paperwork (made into Gmail drafts)
 //   POST /api/crm/google-lead           (google_key in the body) -> Google Ads lead form webhook
 //   PUT/GET/DELETE /api/crm/files/<deal>/<file>  -> documents attached to a deal (signed in)
 //   GET  /api/crm/setup                 -> the key and URLs shown on the Connections page
-import { store, pinMatches, makeToken, tokenOk, addLead, json, buildSummary } from "./crm-lib.mjs";
+import { createHash } from "node:crypto";
+import { store, pinMatches, makeToken, tokenOk, addLead, json, buildSummary, buildChase } from "./crm-lib.mjs";
 
 const COOKIE = "crm_session";
 const MAX_FAILS = 8, LOCK_MIN = 15;
@@ -108,7 +111,32 @@ export default async (req, context) => {
     if (route === "hook/summary" && req.method === "GET") {
       const cur = await s.get("db", { type: "json" });
       await s.setJSON("status/summary", { last: new Date().toISOString() });
-      return json(buildSummary(cur, url.origin));
+      return json(buildSummary(cur, url.origin, Math.max(0, Math.min(99, Number(url.searchParams.get("drafted")) || 0))));
+    }
+    if (route === "hook/file" && req.method === "POST") {
+      const deal = String(req.headers.get("x-deal") || "");
+      if (!/^[\w-]{1,40}$/.test(deal)) return json({ error: "bad_deal" }, 400);
+      const buf = await req.arrayBuffer();
+      if (!buf.byteLength) return json({ error: "empty" }, 400);
+      if (buf.byteLength > MAX_FILE) return json({ error: "too_big" }, 413);
+      const hdr = (h, n) => { try { return decodeURIComponent(req.headers.get(h) || "").replace(/[\r\n"]/g, "").slice(0, n); } catch { return ""; } };
+      const name = hdr("x-file-name", 160) || "Attachment", msg = hdr("x-msg", 80);
+      // the same attachment from the same email always gets the same id, so a re-run doesn't file it twice
+      const fid = createHash("sha256").update(deal + "|" + msg + "|" + name).digest("hex").slice(0, 20);
+      const type = (req.headers.get("content-type") || "application/octet-stream").slice(0, 100);
+      await s.set("files/" + deal + "/" + fid, buf, { metadata: { name, type, size: buf.byteLength } });
+      await addLead({ kind: "file", deal, fid, name, type, size: buf.byteLength, from: hdr("x-from", 200), subject: hdr("x-subject", 300),
+        date: hdr("x-date", 40), single: req.headers.get("x-count") === "1" });
+      return json({ ok: true, id: fid });
+    }
+    if (route === "hook/chase" && req.method === "GET") {
+      const cur = await s.get("db", { type: "json" });
+      const st = (await s.get("status/chase", { type: "json" })) || {};
+      const drafts = buildChase(cur, st, url.searchParams.get("daily") === "1");
+      st.last = new Date().toISOString();
+      await s.setJSON("status/chase", st);
+      if (drafts.length) await addLead({ kind: "chase", items: drafts.map(x => ({ deal: x.deal, to: x.to, who: x.who, docs: x.docs })) });
+      return json({ drafts: drafts.map(x => ({ to: x.to, subject: x.subject, body: x.body })) });
     }
     return json({ error: "not_found" }, 404);
   }
@@ -118,8 +146,9 @@ export default async (req, context) => {
   if (route === "setup" && req.method === "GET") {
     const alerts = await s.get("status/alerts", { type: "json" });
     const summary = await s.get("status/summary", { type: "json" });
+    const chase = await s.get("status/chase", { type: "json" });
     return json({ key: Netlify.env.get("CRM_LEAD_KEY") || "", base: url.origin + "/api/crm",
-      alertsLast: alerts ? alerts.last : null, summaryLast: summary ? summary.last : null });
+      alertsLast: alerts ? alerts.last : null, summaryLast: summary ? summary.last : null, chaseLast: chase ? chase.last : null });
   }
 
   if (route === "logout" && req.method === "POST") {
