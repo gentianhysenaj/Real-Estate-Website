@@ -52,7 +52,7 @@ const TOUR = {
 
 (() => {
   const $ = id => document.getElementById(id);
-  const journey = $("journey"), shotsEl = $("shots"), video = $("tour-video"), clock = $("clock"),
+  const journey = $("journey"), shotsEl = $("shots"), video = $("tour-video"),
         sun = $("sun"), dusk = $("dusk"), grade = $("grade"), rooms = [...document.querySelectorAll("#rooms li")];
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   $("yr").textContent = new Date().getFullYear();
@@ -299,8 +299,6 @@ const TOUR = {
 
     let on = 0; rooms.forEach((li, i) => { if (p + .02 >= +li.dataset.at) on = i; });
     rooms.forEach((li, i) => li.classList.toggle("on", i === on));
-    const mins = Math.round((10.5 * 60 + p * 600) / 5) * 5, hh = Math.floor(mins / 60), mm = mins % 60;
-    clock.textContent = `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, "0")} ${hh >= 12 ? "PM" : "AM"}`;
   }
 
   const last = document.querySelector(".panel.last");

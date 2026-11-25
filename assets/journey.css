@@ -42,9 +42,7 @@ header.top.fixed{position:fixed;inset:0 0 auto 0;z-index:20;border:0;padding-inl
 .rooms li:hover{opacity:.85}
 .rooms li.on{opacity:1;background:rgba(255,255,255,.6)}
 .rooms li.on::after{opacity:1;background:var(--accent);transform:scale(1.25)}
-.clock{position:fixed;left:var(--gutter);bottom:22px;z-index:15;padding:8px 14px;font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--ink);transition:opacity .4s;
-  background:var(--glass);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);border:1px solid var(--glass-line);border-radius:var(--pill)}
-.hud-off .rooms,.hud-off .clock{opacity:0;pointer-events:none}
+.hud-off .rooms{opacity:0;pointer-events:none}
 
 /* Panels */
 .panel{position:absolute;left:0;right:0;top:calc(var(--at) * 1200vh);min-height:100vh;display:flex;align-items:center;padding:110px var(--gutter) 72px;z-index:5;pointer-events:none}
@@ -151,6 +149,8 @@ footer.site{color:var(--muted)}
 .sold-stat{position:sticky;top:90px}
 .sold-stat strong{font-size:clamp(64px,8vw,110px);font-weight:600;line-height:.95;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
 .sold-stat>span{color:var(--muted);max-width:30ch}
+.sold-stat strong.word{display:block;font-size:clamp(44px,4.6vw,66px);line-height:1;letter-spacing:-.04em}
+.sold-note{margin-top:14px;color:var(--muted)}
 .sold-list{list-style:none;margin:0;padding:0;display:grid;border-top:1px solid var(--line)}
 .sold-list li{display:grid;grid-template-columns:34px 88px minmax(0,1fr) auto;gap:18px;align-items:center;padding:16px 0;border-bottom:1px solid var(--line)}
 .sold-list .n{font-size:13px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -300,7 +300,6 @@ footer.site{color:var(--muted)}
   .panel .glass.wide{grid-template-columns:1fr}
   .hero{align-items:center;justify-content:flex-start;padding-top:118px;
     background:linear-gradient(180deg,rgba(246,242,236,.9) 0%,rgba(246,242,236,.74) 42%,rgba(246,242,236,0) 66%)}
-  .clock{bottom:16px}
 }
 @media (max-width:480px){
   .panel .glass{padding:24px;gap:16px}
@@ -319,5 +318,4 @@ footer.site{color:var(--muted)}
   .rev-track{grid-auto-columns:86%}
   .rev-side{width:100%;justify-content:space-between}
   .closing p{font-size:clamp(32px,10vw,44px)}
-  .at-top .clock{opacity:0}
 }

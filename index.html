@@ -53,7 +53,6 @@
   <ol class="rooms" id="rooms" aria-label="Tour progress">
     <li data-at="0">Arrival</li><li data-at=".11">Front door</li><li data-at=".28">Foyer</li><li data-at=".44">Open concept</li><li data-at=".65">Backyard</li>
   </ol>
-  <div class="clock" id="clock" aria-hidden="true">10:30 AM</div>
 
   <!-- ============ Panels that scroll over the walk-through ============ -->
   <section class="panel hero" style="--at:0">
@@ -61,7 +60,7 @@
       <p class="eyebrow">Royal LePage Pinnacle · Toronto and the GTA</p>
       <h1>Find your place.</h1>
       <p class="lede">Thoughtful pricing, standout marketing and steady negotiation, for buyers and sellers. Take a walk through, then let's talk.</p>
-      <div class="actions"><a class="btn light" href="#contact" data-reason="Selling">Book a strategy call</a><a class="link" href="#sold">See recent sales</a></div>
+      <div class="actions"><a class="btn light" href="#contact" data-reason="Selling">Book a strategy call</a><a class="link" href="#sold">See my sales</a></div>
     </div>
     <p class="cue">Scroll to step inside <span aria-hidden="true">↓</span></p>
     <div class="tour-loader" id="tour-loader" hidden><span>Loading the tour</span><i></i></div>
@@ -107,11 +106,12 @@
     </div>
   </section>
 
+  <!-- "By the numbers" panel: hidden until Gentian sends his real totals (homes sold, volume, sale-to-list, days on market)
   <section class="panel" style="--at:.66" id="results">
     <div class="glass" data-reveal>
       <p class="eyebrow">By the numbers</p>
       <h2>Results that<br>speak.</h2>
-      <!-- PLACEHOLDER: replace with Gentian's real figures -->
+      (placeholder figures)
       <div class="stats">
         <div><strong>$00M+</strong><span>Sales volume</span></div>
         <div><strong>00+</strong><span>Homes sold</span></div>
@@ -120,6 +120,7 @@
       </div>
     </div>
   </section>
+  -->
 
   <section class="panel hero finale last" style="--at:1">
     <div class="hero-inner" data-reveal>
@@ -146,25 +147,26 @@
   <section class="block" id="sold">
     <div class="wrap">
       <div class="sec-head" data-reveal>
-        <div><p class="eyebrow">Recently sold</p><h2>Recent sales. <span class="soft">Every one with a plan.</span></h2></div>
-        <p class="lede">A few of my recent sales across the GTA. Ask me about any of them, or about what's selling on your street.</p>
+        <div><p class="eyebrow">Sold</p><h2>Sales I'm proud of. <span class="soft">Every one with a plan.</span></h2></div>
+        <p class="lede">A few deals I'm proud of, for buyers and sellers from Toronto to Hamilton. Ask me about any of them, or about what's selling on your street.</p>
       </div>
       <div class="sold-grid">
         <div class="sold-stat card" data-reveal>
-          <!-- PLACEHOLDER: real total -->
-          <strong>00+</strong>
-          <span>homes sold across the GTA. Call me for details on any sale, including ones on your street.</span>
+          <strong class="word">Buyers &amp; sellers</strong>
+          <span>From first condos to family homes across Toronto, Peel, Halton and Hamilton. Call me for details on any sale, including ones on your street.</span>
           <div class="actions"><a class="btn" href="#contact">Ask about a recent sale</a><a class="link" href="/search/">Homes for sale</a></div>
         </div>
-        <!-- PLACEHOLDER: replace each row with a real sale (photo, address, city, result) -->
+        <div>
+        <!-- Gentian's own deals ("Bought" = he represented the buyer, "Sold" = the seller). Details from TRREB MLS. -->
         <ol class="sold-list" data-reveal>
-          <li><span class="n">01</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Toronto</span></span><span class="res"><span class="tag">Sold</span><span>00% of asking</span></span></li>
-          <li><span class="n">02</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Etobicoke</span></span><span class="res"><span class="tag">Sold</span><span>00 days on market</span></span></li>
-          <li><span class="n">03</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, North York</span></span><span class="res"><span class="tag">Sold</span><span>Multiple offers</span></span></li>
-          <li><span class="n">04</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Mississauga</span></span><span class="res"><span class="tag">Sold</span><span>00% of asking</span></span></li>
-          <li><span class="n">05</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Vaughan</span></span><span class="res"><span class="tag">Sold</span><span>00 days on market</span></span></li>
-          <li><span class="n">06</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>Street address</b><span>Neighbourhood, Oakville</span></span><span class="res"><span class="tag">Sold</span><span>Over asking</span></span></li>
+          <li><span class="n">01</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>117 McMahon Dr, Unit 303</b><span>2-bed condo · Bayview Village, Toronto</span></span><span class="res"><span class="tag">Bought</span><span>$545,000 · Oct 2026</span></span></li>
+          <li><span class="n">02</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>3324 Equestrian Cres</b><span>4-bed semi · Churchill Meadows, Mississauga</span></span><span class="res"><span class="tag">Bought</span><span>$985,000 · Jul 2026</span></span></li>
+          <li><span class="n">03</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>1474 Kovachik Blvd</b><span>4+3-bed detached · Walker, Milton</span></span><span class="res"><span class="tag">Bought</span><span>$1,415,000 · Jul 2025</span></span></li>
+          <li><span class="n">04</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>86 Lockwood Rd</b><span>4+2-bed detached · Fletcher's West, Brampton</span></span><span class="res"><span class="tag">Sold</span><span>$1,198,000 · Aug 2024</span></span></li>
+          <li><span class="n">05</span><span class="thumb" aria-hidden="true"></span><span class="addr"><b>68 First Rd W</b><span>4-bed bungalow · Stoney Creek, Hamilton</span></span><span class="res"><span class="tag">Bought</span><span>$545,000 · Nov 2018</span></span></li>
         </ol>
+        <p class="fine sold-note">Bought: I represented the buyer. Sold: I represented the seller. Sales completed with my previous brokerages.</p>
+        </div>
       </div>
     </div>
   </section>
