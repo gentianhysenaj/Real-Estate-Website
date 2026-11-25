@@ -3,7 +3,9 @@
 //   POST /api/crm/logout
 //   GET  /api/crm/data                  -> {db, etag, inbox:[new leads]}
 //   PUT  /api/crm/data    {db, etag}    -> saves; 409 if another device saved first
-//   POST /api/crm/lead    (header x-crm-key) -> adds a lead from Zapier/Make/Meta
+//   POST /api/crm/lead    (header x-crm-key) -> adds a lead from Make/Zapier (Meta lead ads)
+//   GET  /api/crm/hook/deals, POST /api/crm/hook/email (header x-crm-key) -> the twice-daily Gmail check
+//   GET  /api/crm/setup                 -> the key and URLs shown on the Connections page
 import { store, pinMatches, makeToken, tokenOk, addLead, json } from "./crm-lib.mjs";
 
 const COOKIE = "crm_session";
@@ -48,7 +50,37 @@ export default async (req, context) => {
     return json({ ok: true });
   }
 
+  // Gmail check (Google Apps Script in Gentian's account) and other tools, signed with CRM_LEAD_KEY
+  if (route.startsWith("hook/")) {
+    const want = Netlify.env.get("CRM_LEAD_KEY");
+    if (!want || req.headers.get("x-crm-key") !== want) return json({ error: "bad_key" }, 401);
+    if (route === "hook/deals" && req.method === "GET") {
+      // what the inbox check should look for: open deals by street address, MLS number and client email
+      const cur = await s.get("db", { type: "json" });
+      const db = cur || { contacts: [], deals: [] };
+      const deals = (db.deals || []).filter(d => d.status !== "Closed" && d.addr).map(d => {
+        const c = (db.contacts || []).find(x => x.id === d.client);
+        return { id: d.id, addr: d.addr, mls: d.mls || "", email: c && c.email ? c.email : "" };
+      });
+      return json({ deals });
+    }
+    if (route === "hook/email" && req.method === "POST") {
+      let b = {};
+      try { b = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
+      const items = (Array.isArray(b.items) ? b.items : []).slice(0, 150).map(i => ({
+        deal: String(i.deal || "").slice(0, 40), id: String(i.id || "").slice(0, 80), from: String(i.from || "").slice(0, 200),
+        subject: String(i.subject || "").slice(0, 300), snippet: String(i.snippet || "").slice(0, 400), date: String(i.date || "").slice(0, 40) }));
+      await addLead({ kind: "email", items, checkedAt: String(b.checkedAt || new Date().toISOString()).slice(0, 40) });
+      return json({ ok: true, received: items.length });
+    }
+    return json({ error: "not_found" }, 404);
+  }
+
   if (!tokenOk(context.cookies.get(COOKIE))) return json({ error: "signed_out" }, 401);
+
+  if (route === "setup" && req.method === "GET") {
+    return json({ key: Netlify.env.get("CRM_LEAD_KEY") || "", base: url.origin + "/api/crm" });
+  }
 
   if (route === "logout" && req.method === "POST") {
     context.cookies.delete({ name: COOKIE, path: "/api/crm" });
@@ -56,23 +88,26 @@ export default async (req, context) => {
   }
 
   if (route === "data" && req.method === "GET") {
-    const cur = await s.getWithMetadata("db", { type: "json" });
+    const cur = await s.get("db", { type: "json" });
     const { blobs } = await s.list({ prefix: "inbox/" });
     const inbox = [];
     for (const b of blobs) { const v = await s.get(b.key, { type: "json" }); if (v) inbox.push(v); }
-    return json({ db: cur ? cur.data : null, etag: cur ? cur.etag : null, inbox });
+    // "etag" is the book's revision number; a save must name the revision it was based on
+    return json({ db: cur, etag: cur ? String(cur.rev || 0) : null, inbox });
   }
 
   if (route === "data" && req.method === "PUT") {
     let b;
     try { b = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
     if (!b || typeof b.db !== "object" || !Array.isArray(b.db.contacts)) return json({ error: "bad_db" }, 400);
-    const opts = b.etag ? { onlyIfMatch: b.etag } : { onlyIfNew: true };
-    const res = await s.setJSON("db", b.db, opts);
-    if (!res.modified) return json({ error: "conflict" }, 409);
+    const cur = await s.get("db", { type: "json" });
+    const curRev = cur ? String(cur.rev || 0) : null;
+    if (String(b.etag ?? null) !== String(curRev)) return json({ error: "conflict" }, 409);
+    b.db.rev = (cur ? (cur.rev || 0) : 0) + 1;
+    await s.setJSON("db", b.db);
     // leads the app has now folded in can leave the inbox
     for (const id of Array.isArray(b.ack) ? b.ack : []) if (/^[\w-]{1,40}$/.test(id)) await s.delete("inbox/" + id);
-    return json({ ok: true, etag: res.etag });
+    return json({ ok: true, etag: String(b.db.rev) });
   }
 
   return json({ error: "not_found" }, 404);

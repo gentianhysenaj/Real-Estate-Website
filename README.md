@@ -24,9 +24,10 @@ The contact form and the home-search sign-up use **Netlify Forms**. Submissions 
 - **Tabs:** Today (follow-ups due, new leads, deals with deadlines), Pipeline (drag clients between stages), Deal desk (each property with status, prices, dates, other agent, lawyer, a buyer or seller paperwork checklist you can add to, and updates), Meta leads, Contacts (search, filters, import a CSV, download a CSV from the ⋯ menu).
 - **Data:** one JSON document in Netlify Blobs (store `crm`, key `db`), read and saved only through `netlify/functions/crm.mjs` at `/api/crm/*`. Every change saves a moment later; the header shows Saved.
 - **Leads in:** `netlify/functions/submission-created.mjs` runs after every Netlify Forms submission (`home-search-signup`, `contact`) and drops the lead in `inbox/`; the app adds it as a New lead (or a note on an existing contact with the same email or phone). Netlify Forms must stay enabled.
-- **Meta / Zapier:** `POST /api/crm/lead` with header `x-crm-key: <CRM_LEAD_KEY>` and JSON like `{"full_name","email","phone_number","ad_name","campaign_name","answers":{...}}` adds a Meta lead.
+- **Meta lead ads:** set up with Make.com (steps in ⋯ > Connections). `POST /api/crm/lead` with header `x-crm-key: <CRM_LEAD_KEY>` and JSON like `{"full_name","email","phone_number","ad_name","campaign_name","answers":{...}}` adds a Meta lead.
 - **Settings (Netlify environment variables):** `CRM_PIN_HASH` (PBKDF2 hash of the PIN, never the PIN itself), `CRM_SECRET` (signs sign-in cookies), `CRM_LEAD_KEY`. To change the PIN, make a new hash (`pbkdf2$210000$<salt hex>$<sha256 hash hex>`), replace `CRM_PIN_HASH` and redeploy.
-- **Still to come:** the twice-daily Gmail check that files deal emails onto deals.
+- **Gmail check:** a Google Apps Script in Gentian's own Google account (copy it from ⋯ > Connections) runs at about 8 AM and 2 PM Toronto time. It asks `GET /api/crm/hook/deals` for open deals, searches Gmail for each street address, MLS number and client email since the last run, and posts sender, subject and first lines to `POST /api/crm/hook/email`. The app files each one under the deal's updates.
+- **Saving:** each save names the book's revision (`rev`); if another device saved in between, the app picks up new leads and saves again (last change wins).
 
 ## Presentations
 `/presentations/` (PIN 0707) opens a picker with two decks. Everything lives in `assets/presentations.js` and `assets/presentations.css`.

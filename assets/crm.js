@@ -46,7 +46,7 @@ async function fetchBook() {
   db.contacts = db.contacts || []; db.deals = db.deals || []; db.meta = db.meta || [];
   etag = r.body.etag;
   const n = foldInbox(r.body.inbox || []);
-  if (fresh || n) queueSave(0);
+  if (fresh || (r.body.inbox || []).length) queueSave(0);
   if (n) toast(n === 1 ? "1 new lead came in" : n + " new leads came in");
   return true;
 }
@@ -56,8 +56,22 @@ function foldInbox(items) {
   for (const it of items) {
     if (pendingAck.includes(it.id)) continue;
     pendingAck.push(it.id); n++;
+    if (it.kind === "email") {
+      db.mail = db.mail || { last: null, recent: [] };
+      if (!db.mail.last || it.checkedAt > db.mail.last) db.mail.last = it.checkedAt;
+      for (const m of it.items || []) {
+        const d = db.deals.find(x => x.id === m.deal); if (!d) continue;
+        d.mailIds = d.mailIds || []; if (m.id && d.mailIds.includes(m.id)) continue;
+        if (m.id) d.mailIds.push(m.id);
+        d.ups = d.ups || [];
+        d.ups.unshift({ t: m.date || it.checkedAt, src: "email", x: m.subject + " (from " + shortFrom(m.from) + ")" + (m.snippet ? ": " + m.snippet.slice(0, 180) : "") });
+        db.mail.recent.unshift({ deal: d.id, subject: m.subject, from: shortFrom(m.from), t: m.date || it.checkedAt });
+      }
+      db.mail.recent = db.mail.recent.slice(0, 12);
+      n--; continue;
+    }
     if (it.kind === "meta") {
-      db.meta.push({ id: uid(), first: it.first || "", last: it.last || "", phone: it.phone || "", email: it.email || "", ad: it.ad || "", campaign: it.campaign || "", t: it.received || nowISO(), a: it.answers || {}, isNew: true });
+      db.meta.push({ id: uid(), first: it.first || "", last: it.last || "", phone: it.phone || "", email: it.email || "", ad: it.ad || "", campaign: it.campaign || "", t: it.received || nowISO(), a: it.answers || {}, isNew: true, auto: true });
       continue;
     }
     const source = it.kind === "search" ? "Home search" : "Contact form";
@@ -139,6 +153,7 @@ const dueLabel = c => { if (!c.follow) return ""; const d = daysTo(c.follow);
   return d < 0 ? (d === -1 ? "Yesterday" : (-d) + " days late") : d === 0 ? "Today" : d === 1 ? "Tomorrow" : new Date(c.follow + "T00:00").toLocaleDateString("en-CA", { month: "short", day: "numeric" }); };
 const typePill = c => `<span class="pill ${c.type === "Seller" ? "seller" : c.type === "Buyer" ? "buyer" : ""}">${esc(c.type)}</span>`;
 const webSrc = s => s === "Home search" || s === "Contact form" || s === "Meta ad";
+function shortFrom(f) { const m = String(f || "").match(/^\s*"?([^"<]+?)"?\s*</); return (m ? m[1] : String(f || "")).trim(); }
 function digits(p) { let d = String(p || "").replace(/\D/g, ""); if (d.length === 10) d = "1" + d; return d; }
 function timeAgo(t) { const h = Math.round((Date.now() - new Date(t)) / 36e5); if (h < 1) return "just now"; if (h < 24) return h + "h ago"; const d = Math.round(h / 24); return d === 1 ? "yesterday" : d + " days ago"; }
 function addLog(c, k, x, t) { (c.log = c.log || []).unshift({ id: uid(), t: t || nowISO(), k, x }); }
@@ -218,8 +233,122 @@ function dealsToWatch() {
 }
 
 function inboxCard() {
-  return `<div class="card inbox"><div class="inbox-h"><span class="dot" style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"></span><h3>Email check not connected yet</h3></div>
-  <p class="muted" style="font-size:14px">Once your Gmail is connected, your inbox is read at 8 AM and 2 PM and anything about one of your deals (offers, deposits, lawyers, lenders) is added to that deal and listed here.</p></div>`;
+  const m = db.mail;
+  if (!m || !m.last) return `<div class="card inbox"><div class="inbox-h"><span class="dot" style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"></span><h3>Email check not connected yet</h3></div>
+  <p class="muted" style="font-size:14px">Once your Gmail is connected, your inbox is read at 8 AM and 2 PM and anything about one of your deals (offers, deposits, lawyers, lenders) is added to that deal and listed here.</p>
+  <div><button class="btn" data-act="connections">Connect Gmail</button></div></div>`;
+  const last = new Date(m.last);
+  const when = last.toLocaleString("en-CA", { weekday: "short", hour: "numeric", minute: "2-digit" });
+  const recent = (m.recent || []).slice(0, 5);
+  return `<div class="card inbox"><div class="inbox-h"><span class="dot"></span><h3>Email check, ${esc(when)}</h3><span class="meta">Runs at 8 AM and 2 PM</span></div>
+  ${recent.length ? recent.map(r => { const d = db.deals.find(x => x.id === r.deal); return `<div class="inbox-item" ${d ? `data-deal="${d.id}"` : ""}><span class="ic">@</span><div>${esc(r.subject || "(no subject)")}<small>${esc(r.from)}${d ? " · added to " + esc(d.addr) : ""}</small></div></div>`; }).join("")
+    : `<p class="muted" style="font-size:14px">No emails about your open deals yet.</p>`}</div>`;
+}
+
+/* ---------- connections ---------- */
+async function openConnections() {
+  openId = "__conn";
+  sheet.innerHTML = `<div class="sheet-h"><h2>Connections</h2><button class="x" aria-label="Close">×</button></div><p class="muted">Loading…</p>`;
+  openPanel(); sheet.querySelector(".x").onclick = () => closeSheet();
+  const r = await api("setup");
+  if (r.status !== 200) { sheet.querySelector("p").textContent = "Couldn't load your connection details. Try again in a moment."; return; }
+  const { key, base } = r.body;
+  const script = gmailScript(base, key);
+  const m = db.mail, autoMeta = db.meta.filter(x => x.auto).length;
+  sheet.innerHTML = `<div class="sheet-h"><h2>Connections</h2><button class="x" aria-label="Close">×</button></div>
+  <div class="card box"><div class="inbox-h"><span class="dot" ${m && m.last ? "" : 'style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"'}></span><h3>Gmail check</h3>
+    <span class="meta">${m && m.last ? "Last ran " + esc(new Date(m.last).toLocaleString("en-CA", { weekday: "short", hour: "numeric", minute: "2-digit" })) : "Not connected"}</span></div>
+    <p class="muted" style="font-size:14px">A small script runs inside your own Google account at 8 AM and 2 PM. It looks for emails about your open deals (the street address, the MLS number or your client's email) and sends only the sender, subject and first lines here. Nobody else gets access to your Gmail.</p>
+    <ol class="steps">
+      <li>On a computer, signed in to the Gmail you use for work, open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a>. A new project opens.</li>
+      <li>Delete what's in the editor, then tap <b>Copy script</b> below and paste it in.</li>
+      <li>Click the save icon. Name it <b>Client book email check</b>.</li>
+      <li>In the menu next to <b>Run</b>, pick <b>setup</b>, then click <b>Run</b>.</li>
+      <li>Google asks for permission. Click <b>Review permissions</b>, pick your account, then <b>Advanced</b> and <b>Go to Client book email check</b>, then <b>Allow</b>. (Google shows this warning for any script you write yourself.)</li>
+      <li>That's it. Come back here: the dot turns green after the first check.</li>
+    </ol>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cpScript">Copy script</button><button class="btn ghost" id="showScript">Show script</button></div>
+    <textarea class="paste" id="scriptBox" readonly hidden style="min-height:220px">${esc(script)}</textarea>
+  </div>
+  <div class="card box"><div class="inbox-h"><span class="dot" ${autoMeta ? "" : 'style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"'}></span><h3>Meta lead ads</h3><span class="meta">${autoMeta ? autoMeta + " leads received" : "Not connected"}</span></div>
+    <p class="muted" style="font-size:14px">Uses a free Make.com account to pass each new Facebook or Instagram lead form straight to your Meta leads tab.</p>
+    <ol class="steps">
+      <li>Sign up at <a href="https://www.make.com/en/register" target="_blank" rel="noopener">make.com</a> (the free plan is enough) and click <b>Create a new scenario</b>.</li>
+      <li>Add <b>Facebook Lead Ads</b>, choose <b>Watch New Leads</b>, connect your Facebook account, then pick your business page and lead form.</li>
+      <li>Click the + after it and add <b>HTTP</b>, choose <b>Make a request</b>.</li>
+      <li>URL: paste the address below. Method: <b>POST</b>.</li>
+      <li>Under Headers, add one: Name <b>x-crm-key</b>, Value: paste your key below.</li>
+      <li>Body type: <b>Raw</b>, Content type: <b>JSON</b>. Paste the body below, then click into each <b>{{ }}</b> spot and swap it for the matching field from the Facebook step.</li>
+      <li>Turn the scenario <b>On</b>. New leads show up here within a minute.</li>
+    </ol>
+    <div class="field"><label>Address (URL)</label><div class="inline-add"><input readonly value="${esc(base)}/lead" id="cpUrlV"><button class="btn" data-copy="cpUrlV">Copy</button></div></div>
+    <div class="field"><label>Your key (keep it private)</label><div class="inline-add"><input readonly value="${esc(key)}" id="cpKeyV"><button class="btn" data-copy="cpKeyV">Copy</button></div></div>
+    <div class="field"><label>Body</label><textarea class="paste" id="cpBodyV" readonly style="min-height:150px">${esc(META_BODY)}</textarea><div><button class="btn" data-copy="cpBodyV">Copy body</button></div></div>
+  </div>`;
+  sheet.querySelector(".x").onclick = () => closeSheet();
+  const copy = async (text, label) => { try { await navigator.clipboard.writeText(text); toast(label === "Copied" ? "Copied" : label + " copied"); } catch (e) { toast("Select it and copy by hand"); } };
+  sheet.querySelector("#cpScript").onclick = () => copy(script, "Script");
+  sheet.querySelector("#showScript").onclick = () => { const b = sheet.querySelector("#scriptBox"); b.hidden = !b.hidden; };
+  sheet.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(sheet.querySelector("#" + b.dataset.copy).value, "Copied"));
+}
+const META_BODY = `{
+  "full_name": "{{full_name}}",
+  "email": "{{email}}",
+  "phone_number": "{{phone_number}}",
+  "ad_name": "{{ad_name}}",
+  "campaign_name": "{{campaign_name}}",
+  "answers": {
+    "Question 1": "{{answer 1}}",
+    "Question 2": "{{answer 2}}"
+  }
+}`;
+function gmailScript(base, key) {
+  return `// Client book email check for gentianhysenaj.com/crm
+// Runs at about 8 AM and 2 PM (Toronto time). Looks for emails about your open deals
+// and sends the sender, subject and first lines to your client book. Nothing else leaves Gmail.
+const CRM = "${base}/hook";
+const KEY = "${key}";
+
+function checkInbox() {
+  const res = UrlFetchApp.fetch(CRM + "/deals", { headers: { "x-crm-key": KEY } });
+  const deals = JSON.parse(res.getContentText()).deals || [];
+  const props = PropertiesService.getScriptProperties();
+  const since = Number(props.getProperty("since")) || (Date.now() - 3 * 86400000);
+  const started = Date.now();
+  const seen = {};
+  const items = [];
+  deals.forEach(function (d) {
+    const terms = [];
+    const street = String(d.addr).split(",")[0].trim();
+    if (street) terms.push('"' + street.replace(/"/g, "") + '"');
+    if (d.mls) terms.push('"' + d.mls + '"');
+    if (d.email) terms.push("from:" + d.email, "to:" + d.email);
+    if (!terms.length) return;
+    const q = "(" + terms.join(" OR ") + ") after:" + Math.floor(since / 1000) + " -in:chats";
+    GmailApp.search(q, 0, 25).forEach(function (thread) {
+      thread.getMessages().forEach(function (m) {
+        if (m.getDate().getTime() < since) return;
+        const id = m.getId();
+        if (seen[d.id + id]) return;
+        seen[d.id + id] = true;
+        items.push({ deal: d.id, id: id, from: m.getFrom(), subject: m.getSubject(),
+          snippet: m.getPlainBody().replace(/\\s+/g, " ").slice(0, 300), date: m.getDate().toISOString() });
+      });
+    });
+  });
+  UrlFetchApp.fetch(CRM + "/email", { method: "post", contentType: "application/json", headers: { "x-crm-key": KEY },
+    payload: JSON.stringify({ items: items.slice(0, 150), checkedAt: new Date(started).toISOString() }) });
+  props.setProperty("since", String(started));
+}
+
+// Run this once. It sets up the 8 AM and 2 PM checks and does a first check right away.
+function setup() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger("checkInbox").timeBased().atHour(8).everyDays(1).inTimezone("America/Toronto").create();
+  ScriptApp.newTrigger("checkInbox").timeBased().atHour(14).everyDays(1).inTimezone("America/Toronto").create();
+  checkInbox();
+}
+`;
 }
 
 /* ---------- pipeline ---------- */
@@ -588,7 +717,7 @@ function renderMeta() {
     <div class="acts">${m.moved ? `<span class="pill">In client book</span>` : `<button class="btn primary" data-mmove="${m.id}">Add to client book</button>`}
       ${m.isNew ? `<button class="btn ghost" data-mseen="${m.id}">Mark contacted</button>` : ""}<button class="x-sm" data-mdel="${m.id}">Remove</button></div></div>`).join("")
     : `<p class="empty">No Meta leads yet. Once your lead ads are connected, people who fill in your ad forms show up here within a minute. You can also add one by hand.</p>`}</div>
-  <p class="how"><b>Connecting your ads:</b> your Facebook and Instagram lead forms can send new leads here automatically. It takes a one-time setup with your Facebook business page; ask in your project chat and you'll be walked through it.</p>`;
+  <p class="how"><b>Connecting your ads:</b> your Facebook and Instagram lead forms can send new leads here automatically. <button class="linkbtn" data-act="connections">Set it up</button></p>`;
   el.querySelector("#mAdd").onclick = addMetaLead;
   el.querySelectorAll("[data-mseen]").forEach(b => b.onclick = () => { const m = db.meta.find(x => x.id === b.dataset.mseen); m.isNew = false; save(); render(); });
   el.querySelectorAll("[data-mdel]").forEach(b => b.onclick = () => { if (b.dataset.sure) { db.meta = db.meta.filter(x => x.id !== b.dataset.mdel); save(); render(); toast("Removed"); } else { b.dataset.sure = "1"; b.textContent = "Tap again to remove"; } });
@@ -622,7 +751,7 @@ document.addEventListener("click", e => {
   if (d) { e.stopPropagation(); const c = byId(d.dataset.done); d.classList.add("done"); d.textContent = "✓";
     addLog(c, "note", "Done: " + (c.followNote || "follow-up")); c.follow = null; c.followNote = ""; save(); setTimeout(() => { render(); toast("Done. Set the next one from their card."); }, 350); return; }
   const a = e.target.closest("[data-act]");
-  if (a) { const k = a.dataset.act; if (k === "new-contact") newContact(); else if (k === "new-deal") newDeal(); else if (k === "import") show("import"); return; }
+  if (a) { const k = a.dataset.act; if (k === "new-contact") newContact(); else if (k === "new-deal") newDeal(); else if (k === "import") show("import"); else if (k === "connections") openConnections(); return; }
   const g = e.target.closest("[data-go]"); if (g) { show(g.dataset.go); return; }
   const dl = e.target.closest("[data-deal]"); if (dl) { openDeal(dl.dataset.deal); return; }
   const o = e.target.closest("[data-open]"); if (o) { openContact(o.dataset.open); return; }
@@ -635,6 +764,7 @@ document.addEventListener("keydown", e => {
 });
 $id("addBtn").onclick = newContact;
 $id("menuBtn").onclick = () => { const l = $id("menuList"); l.hidden = !l.hidden; $id("menuBtn").setAttribute("aria-expanded", String(!l.hidden)); };
+$id("mConn").onclick = () => { $id("menuList").hidden = true; openConnections(); };
 $id("mImport").onclick = () => { $id("menuList").hidden = true; show("import"); };
 $id("mExport").onclick = () => { $id("menuList").hidden = true; exportCSV(); };
 $id("mRefresh").onclick = async () => { $id("menuList").hidden = true; if (await fetchBook()) { render(); toast("Up to date"); } };
