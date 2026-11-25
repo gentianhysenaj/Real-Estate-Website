@@ -5,7 +5,7 @@
 (function () {
 "use strict";
 const STAGES = ["New lead", "Contacted", "Showing homes", "Offer out", "Firm deal", "Closed"];
-const SOURCES = ["Home search", "Contact form", "Meta ad", "Referral", "Open house", "Instagram", "Past client", "Sphere", "Sign call", "Import", "Other"];
+const SOURCES = ["Home search", "Contact form", "Meta ad", "Google ad", "AgentLocator", "Referral", "Open house", "Instagram", "Past client", "Sphere", "Sign call", "Import", "Other"];
 const KINDS = { call: "Call", text: "Text", email: "Email", showing: "Showing", note: "Note" };
 const KI = { call: "C", text: "T", email: "E", showing: "S", note: "N" };
 const BUY_DOCS = ["Buyer representation agreement", "FINTRAC ID check", "Agreement of purchase and sale", "Deposit delivered", "Financing condition waived", "Inspection condition waived", "Notice of fulfillment signed", "Lawyer details sent", "Closing and commission paid"];
@@ -13,6 +13,14 @@ const SELL_DOCS = ["Listing agreement", "FINTRAC ID check", "Property info and p
 const DSTAT = ["Listing", "Offer in", "Conditional", "Firm", "Closed"];
 const DAY = 864e5;
 const VIEWS = ["today", "pipeline", "deals", "meta", "contacts", "import"];
+// Follow-up plans: each step is [day after the plan starts, what to do]. Ticking a follow-up done moves to the next step.
+const PLANS = {
+  "New buyer lead": [[0, "Call: intro and what they're looking for"], [1, "Text: thanks for chatting, send 3 listings"], [3, "Call: check in on the listings, offer a showing"], [7, "Email: buyer guide and pre-approval contacts"], [14, "Call: anything new? book showings"], [30, "Text: market update for their area"], [60, "Call: monthly check-in"]],
+  "New seller lead": [[0, "Call: intro and their plans"], [1, "Email: home value estimate and recent sales nearby"], [3, "Call: book a walk-through"], [7, "Text: home prep tips"], [14, "Call: check in, timing to list"], [30, "Email: market update"]],
+  "Past client": [[0, "Text: say hi and ask how the home is"], [90, "Call: quarterly check-in"], [180, "Email: what their home is worth now"], [270, "Call: quarterly check-in"], [365, "Text: home anniversary wishes"]],
+  "Cold lead revival": [[0, "Text: still looking? quick update"], [7, "Email: new listings in their range"], [21, "Call: check in"], [45, "Text: market update"]],
+};
+const CHECKIN_DAYS = 90;
 
 const $id = id => document.getElementById(id);
 const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
@@ -70,8 +78,8 @@ function foldInbox(items) {
       db.mail.recent = db.mail.recent.slice(0, 12);
       n--; continue;
     }
-    if (it.kind === "meta") {
-      db.meta.push({ id: uid(), first: it.first || "", last: it.last || "", phone: it.phone || "", email: it.email || "", ad: it.ad || "", campaign: it.campaign || "", t: it.received || nowISO(), a: it.answers || {}, isNew: true, auto: true });
+    if (it.kind === "meta" || it.kind === "google") {
+      db.meta.push({ id: uid(), first: it.first || "", last: it.last || "", phone: it.phone || "", email: it.email || "", ad: it.ad || "", campaign: it.campaign || "", t: it.received || nowISO(), a: it.answers || {}, isNew: true, auto: true, via: it.kind === "google" ? "Google" : "Meta" });
       continue;
     }
     const source = it.kind === "search" ? "Home search" : "Contact form";
@@ -152,11 +160,54 @@ const daysTo = d => d ? Math.round((new Date(d + "T00:00") - today()) / DAY) : n
 const dueLabel = c => { if (!c.follow) return ""; const d = daysTo(c.follow);
   return d < 0 ? (d === -1 ? "Yesterday" : (-d) + " days late") : d === 0 ? "Today" : d === 1 ? "Tomorrow" : new Date(c.follow + "T00:00").toLocaleDateString("en-CA", { month: "short", day: "numeric" }); };
 const typePill = c => `<span class="pill ${c.type === "Seller" ? "seller" : c.type === "Buyer" ? "buyer" : ""}">${esc(c.type)}</span>`;
-const webSrc = s => s === "Home search" || s === "Contact form" || s === "Meta ad";
+const webSrc = s => s === "Home search" || s === "Contact form" || s === "Meta ad" || s === "Google ad";
 function shortFrom(f) { const m = String(f || "").match(/^\s*"?([^"<]+?)"?\s*</); return (m ? m[1] : String(f || "")).trim(); }
 function digits(p) { let d = String(p || "").replace(/\D/g, ""); if (d.length === 10) d = "1" + d; return d; }
 function timeAgo(t) { const h = Math.round((Date.now() - new Date(t)) / 36e5); if (h < 1) return "just now"; if (h < 24) return h + "h ago"; const d = Math.round(h / 24); return d === 1 ? "yesterday" : d + " days ago"; }
 function addLog(c, k, x, t) { (c.log = c.log || []).unshift({ id: uid(), t: t || nowISO(), k, x }); }
+const isPast = c => c.stage === "Closed" || c.source === "Past client";
+const lastTouch = c => (c.log || []).filter(l => ["call", "text", "email", "showing"].includes(l.k)).map(l => l.t).sort().pop() || null;
+const wasReached = c => (c.log || []).some(l => ["call", "text", "email", "showing"].includes(l.k));
+// "Call these first": how likely a lead is to buy soon. Same rules as the morning email (crm-lib.mjs, intentScore).
+function intent(c) {
+  const cr = c.crit || {}, why = []; let s = 0;
+  if (cr.pre === "Yes") { s += 40; why.push("Pre-approved"); } else if (cr.pre === "In progress") { s += 15; why.push("Getting pre-approved"); }
+  const w = String(cr.when || "").toLowerCase();
+  if (/0\s*-\s*3|asap|right away|immediately|this month/.test(w)) { s += 40; why.push("Buying in 0-3 months"); }
+  else if (/3\s*-\s*6/.test(w)) { s += 30; why.push("Buying in 3-6 months"); }
+  else if (/6\s*-\s*12/.test(w)) { s += 12; why.push("6-12 months"); }
+  else if (/right (one|property)/.test(w)) { s += 8; why.push("When the right one comes"); }
+  if ((c.tags || []).includes("Has home to sell")) { s += 10; why.push("Has a home to sell"); }
+  if (!wasReached(c)) { s += 10; why.push("Not reached yet"); }
+  return { s, why };
+}
+const callFirstList = () => db.contacts.filter(c => ["New lead", "Contacted"].includes(c.stage)).map(c => ({ c, ...intent(c) })).filter(x => x.s >= 60).sort((a, b) => b.s - a.s);
+function nextOcc(d) { if (!d) return null; const t = iso(today()); let n = t.slice(0, 4) + d.slice(4); if (n < t) n = (+t.slice(0, 4) + 1) + d.slice(4); return n; }
+// Birthdays, anniversaries and home-purchase anniversaries (from closed deals) in the next `days` days
+function upcomingDates(days) {
+  const out = [];
+  db.contacts.forEach(c => {
+    if (c.bday) out.push({ c, label: "Birthday", date: nextOcc(c.bday), kind: "bday" });
+    if (c.anniv) out.push({ c, label: c.annivLabel || "Anniversary", date: nextOcc(c.anniv), kind: "anniv" });
+  });
+  db.deals.forEach(d => { const c = byId(d.client); if (!c || d.status !== "Closed" || !d.close) return;
+    const date = nextOcc(d.close), yrs = +date.slice(0, 4) - +d.close.slice(0, 4);
+    if (yrs >= 1) out.push({ c, label: yrs + (yrs === 1 ? " year" : " years") + " in " + (d.addr || "their home"), date, kind: "home" }); });
+  return out.map(x => ({ ...x, n: daysTo(x.date) })).filter(x => x.n >= 0 && x.n <= days).sort((a, b) => a.n - b.n);
+}
+const checkIns = () => db.contacts.filter(c => isPast(c) && !c.follow && (!lastTouch(c) || (Date.now() - new Date(lastTouch(c))) / DAY >= CHECKIN_DAYS))
+  .sort((a, b) => (lastTouch(a) || "").localeCompare(lastTouch(b) || ""));
+function wishText(x) { const f = x.c.first || "there";
+  return x.kind === "bday" ? "Happy birthday " + f + "! Hope you have a great day. Gentian" : x.kind === "home" ? "Happy home anniversary " + f + "! Hard to believe it's been " + x.label.split(" in ")[0] + ". Hope you're loving it. Gentian" : "Happy anniversary " + f + "! Wishing you both a great day. Gentian"; }
+function startPlan(c, planName) { const steps = PLANS[planName]; if (!steps) return; c.plan = { name: planName, i: 0, start: iso(today()) };
+  c.follow = rel(steps[0][0]); c.followNote = steps[0][1] + " (" + planName + " 1/" + steps.length + ")"; addLog(c, "note", "Started follow-up plan: " + planName); }
+function advancePlan(c) { const p = c.plan; if (!p || !PLANS[p.name]) return false; const steps = PLANS[p.name]; p.i += 1;
+  if (p.i >= steps.length) { addLog(c, "note", "Finished follow-up plan: " + p.name); c.plan = null; return false; }
+  const due = iso(new Date(p.start + "T00:00").getTime() + steps[p.i][0] * DAY);
+  c.follow = due < iso(today()) ? rel(1) : due; c.followNote = steps[p.i][1] + " (" + p.name + " " + (p.i + 1) + "/" + steps.length + ")"; return true; }
+// Commission on a deal: a percentage of the sale (or offer/list) price, or a fixed amount
+const dealValue = d => d.price || d.list || 0;
+const commission = d => d.commAmt ? d.commAmt : d.commPct ? Math.round(dealValue(d) * d.commPct / 100) : 0;
 function toast(m) { const t = $id("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 2200); }
 const opt = (list, cur) => list.map(s => `<option${s === cur ? " selected" : ""}>${esc(s)}</option>`).join("");
 
@@ -210,8 +261,14 @@ function renderToday() {
         <div class="side"><span class="pill due">${dueLabel(c)}</span></div></div>`).join("") : `<p class="empty">You're all caught up.</p>`}</div>
       <div class="sec-h"><h2>Coming up this week</h2></div>
       <div class="card list">${week.length ? week.map(c => row(c, dueLabel(c) + " · " + (c.followNote || "Follow up"))).join("") : `<p class="empty">Nothing booked in the next 7 days.</p>`}</div>
+      <div class="sec-h"><h2>Birthdays and anniversaries</h2><span class="meta">Next 30 days</span></div>
+      <div class="card list">${datesCard()}</div>
+      <div class="sec-h"><h2>Check in with past clients</h2><span class="meta">No contact in ${CHECKIN_DAYS}+ days</span></div>
+      <div class="card list">${checkInCard()}</div>
     </div>
     <div style="display:grid;gap:12px;min-width:0">
+      <div class="sec-h"><h2>Call these first</h2><span class="meta">Most likely to buy soon</span></div>
+      <div class="card list">${callFirstCard()}</div>
       <div class="sec-h"><h2>New leads</h2><span class="meta">From your website and ads</span></div>
       <div class="card list">${fresh.length ? fresh.map(c => `<div class="row" data-open="${c.id}" tabindex="0">
         <div class="av">${esc(initials(c))}</div>
@@ -223,6 +280,29 @@ function renderToday() {
       ${inboxCard()}
     </div>
   </div>`;
+}
+
+function datesCard() {
+  const ds = upcomingDates(30);
+  return ds.length ? ds.map(x => { const ph = digits(x.c.phone);
+    return `<div class="row wrap" data-open="${x.c.id}" tabindex="0"><div class="av ${x.kind === "home" ? "home" : "gift"}">${x.kind === "bday" ? "🎂" : x.kind === "home" ? "🏠" : "♥"}</div>
+    <div class="who"><b>${esc(name(x.c))}</b><small>${esc(x.label)} · ${dLabel(x.date)}<span class="m-only"> · ${inDays(x.n).toLowerCase()}</span></small></div>
+    <div class="side"><span class="pill dpill ${x.n <= 1 ? "due" : "web"}">${inDays(x.n)}</span>${ph ? `<a class="btn small" href="sms:+${ph}?&body=${encodeURIComponent(wishText(x))}" data-wish="${x.c.id}" data-wlabel="${esc(x.label)}">Send wishes</a>` : ""}</div></div>`; }).join("")
+    : `<p class="empty">Nothing in the next 30 days. Add birthdays and anniversaries on a client's card, and home anniversaries come from your closed deals.</p>`;
+}
+function checkInCard() {
+  const cs = checkIns().slice(0, 6);
+  return cs.length ? cs.map(c => { const lt = lastTouch(c); return `<div class="row wrap" data-open="${c.id}" tabindex="0"><div class="av">${esc(initials(c))}</div>
+    <div class="who"><b>${esc(name(c))}</b><small>${lt ? "Last contact " + timeAgo(lt) : "No contact logged yet"}</small></div>
+    <div class="side"><button class="btn small" data-checkin="${c.id}">Plan a check-in</button></div></div>`; }).join("")
+    : `<p class="empty">Every past client has been in touch in the last ${CHECKIN_DAYS} days.</p>`;
+}
+function callFirstCard() {
+  const xs = callFirstList().slice(0, 8);
+  return xs.length ? xs.map(({ c, why }) => `<div class="row" data-open="${c.id}" tabindex="0"><div class="av hot">${esc(initials(c))}</div>
+    <div class="who"><b>${esc(name(c))}</b><small>${esc(why.join(" · "))}</small></div>
+    <div class="side">${c.phone ? `<a class="btn small" href="tel:+${digits(c.phone)}" data-call="${c.id}">Call</a>` : ""}</div></div>`).join("")
+    : `<p class="empty">No one stands out right now. Leads who are pre-approved and buying within 6 months show up here.</p>`;
 }
 
 function dealsToWatch() {
@@ -252,20 +332,29 @@ async function openConnections() {
   openPanel(); sheet.querySelector(".x").onclick = () => closeSheet();
   const r = await api("setup");
   if (r.status !== 200) { sheet.querySelector("p").textContent = "Couldn't load your connection details. Try again in a moment."; return; }
-  const { key, base } = r.body;
+  const { key, base, alertsLast, summaryLast } = r.body;
+  const ago2 = t => t ? new Date(t).toLocaleString("en-CA", { weekday: "short", hour: "numeric", minute: "2-digit" }) : "";
+  const dot = on => on ? "" : 'style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"';
+  const googleMeta = db.meta.filter(x => x.via === "Google").length;
   const script = gmailScript(base, key);
   const m = db.mail, autoMeta = db.meta.filter(x => x.auto).length;
   sheet.innerHTML = `<div class="sheet-h"><h2>Connections</h2><button class="x" aria-label="Close">×</button></div>
-  <div class="card box"><div class="inbox-h"><span class="dot" ${m && m.last ? "" : 'style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"'}></span><h3>Gmail check</h3>
+  <div class="card box"><div class="inbox-h"><span class="dot" ${m && m.last ? "" : 'style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"'}></span><h3>Gmail check, lead alerts, morning summary</h3>
     <span class="meta">${m && m.last ? "Last ran " + esc(new Date(m.last).toLocaleString("en-CA", { weekday: "short", hour: "numeric", minute: "2-digit" })) : "Not connected"}</span></div>
-    <p class="muted" style="font-size:14px">A small script runs inside your own Google account at 8 AM and 2 PM. It looks for emails about your open deals (the street address, the MLS number or your client's email) and sends only the sender, subject and first lines here. Nobody else gets access to your Gmail.</p>
+    <p class="muted" style="font-size:14px">One small script runs inside your own Google account and does three jobs. Nobody else gets access to your Gmail.</p>
+    <ul class="jobs">
+      <li><b>Email check</b>, 8 AM and 2 PM: finds emails about your open deals (street address, MLS number or your client's email) and adds the sender, subject and first lines to the deal.</li>
+      <li><b>New-lead alert</b>, every 5 minutes: when a lead comes in from your website, Meta or Google, you get an email with their name, phone and answers. Turn on Gmail notifications on your phone to hear it right away. <span class="dot-l"><span class="dot" ${dot(alertsLast)}></span>${alertsLast ? "Last checked " + esc(ago2(alertsLast)) : "Not running yet"}</span></li>
+      <li><b>Morning summary</b>, 7 AM: today's follow-ups, who to call first, birthdays and anniversaries, and deal deadlines this week. <span class="dot-l"><span class="dot" ${dot(summaryLast)}></span>${summaryLast ? "Last sent " + esc(ago2(summaryLast)) : "Not sent yet"}</span></li>
+    </ul>
+    ${m && m.last && !alertsLast ? `<p class="note">You set up the email check before alerts and the summary were added. Copy the new script below, paste it over the old one in the same Apps Script project, save, and run <b>setup</b> once more.</p>` : ""}
     <ol class="steps">
       <li>On a computer, signed in to the Gmail you use for work, open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a>. A new project opens.</li>
       <li>Delete what's in the editor, then tap <b>Copy script</b> below and paste it in.</li>
       <li>Click the save icon. Name it <b>Client book email check</b>.</li>
       <li>In the menu next to <b>Run</b>, pick <b>setup</b>, then click <b>Run</b>.</li>
       <li>Google asks for permission. Click <b>Review permissions</b>, pick your account, then <b>Advanced</b> and <b>Go to Client book email check</b>, then <b>Allow</b>. (Google shows this warning for any script you write yourself.)</li>
-      <li>That's it. Come back here: the dot turns green after the first check.</li>
+      <li>That's it. Come back here: the dots turn green after the first runs. You'll also get a first morning summary right away so you can see what it looks like.</li>
     </ol>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="cpScript">Copy script</button><button class="btn ghost" id="showScript">Show script</button></div>
     <textarea class="paste" id="scriptBox" readonly hidden style="min-height:220px">${esc(script)}</textarea>
@@ -284,6 +373,17 @@ async function openConnections() {
     <div class="field"><label>Address (URL)</label><div class="inline-add"><input readonly value="${esc(base)}/lead" id="cpUrlV"><button class="btn" data-copy="cpUrlV">Copy</button></div></div>
     <div class="field"><label>Your key (keep it private)</label><div class="inline-add"><input readonly value="${esc(key)}" id="cpKeyV"><button class="btn" data-copy="cpKeyV">Copy</button></div></div>
     <div class="field"><label>Body</label><textarea class="paste" id="cpBodyV" readonly style="min-height:150px">${esc(META_BODY)}</textarea><div><button class="btn" data-copy="cpBodyV">Copy body</button></div></div>
+  </div>
+  <div class="card box"><div class="inbox-h"><span class="dot" ${dot(googleMeta)}></span><h3>Google Ads lead forms</h3><span class="meta">${googleMeta ? googleMeta + " leads received" : "Not connected"}</span></div>
+    <p class="muted" style="font-size:14px">Google Ads can send each lead form straight here, no extra service needed.</p>
+    <ol class="steps">
+      <li>In Google Ads, open the campaign with your lead form, then <b>Assets</b> and your <b>Lead form</b>, and click to edit it.</li>
+      <li>Scroll to <b>Lead delivery</b> (or <b>Other data integration options</b>) and choose <b>Webhook integration</b>.</li>
+      <li>Webhook URL: paste the address below. Key: paste your key below.</li>
+      <li>Click <b>Send test data</b>. A test lead shows up in your Ad leads tab within a minute. Then save the form.</li>
+    </ol>
+    <div class="field"><label>Webhook URL</label><div class="inline-add"><input readonly value="${esc(base)}/google-lead" id="cpGUrl"><button class="btn" data-copy="cpGUrl">Copy</button></div></div>
+    <div class="field"><label>Key</label><div class="inline-add"><input readonly value="${esc(key)}" id="cpGKey"><button class="btn" data-copy="cpGKey">Copy</button></div></div>
   </div>`;
   sheet.querySelector(".x").onclick = () => closeSheet();
   const copy = async (text, label) => { try { await navigator.clipboard.writeText(text); toast(label === "Copied" ? "Copied" : label + " copied"); } catch (e) { toast("Select it and copy by hand"); } };
@@ -303,9 +403,11 @@ const META_BODY = `{
   }
 }`;
 function gmailScript(base, key) {
-  return `// Client book email check for gentianhysenaj.com/crm
-// Runs at about 8 AM and 2 PM (Toronto time). Looks for emails about your open deals
-// and sends the sender, subject and first lines to your client book. Nothing else leaves Gmail.
+  return `// Client book helper for gentianhysenaj.com/crm
+// 1. Email check at about 8 AM and 2 PM (Toronto time): looks for emails about your open deals and sends the
+//    sender, subject and first lines to your client book. Nothing else leaves Gmail.
+// 2. New-lead alerts every 5 minutes, sent to you from your own Gmail.
+// 3. A morning summary at about 7 AM.
 const CRM = "${base}/hook";
 const KEY = "${key}";
 
@@ -341,12 +443,47 @@ function checkInbox() {
   props.setProperty("since", String(started));
 }
 
-// Run this once. It sets up the 8 AM and 2 PM checks and does a first check right away.
+// Every 5 minutes: email you about each new lead from your website, Meta or Google ads.
+function alertNewLeads() {
+  const res = UrlFetchApp.fetch(CRM + "/alerts", { headers: { "x-crm-key": KEY } });
+  const data = JSON.parse(res.getContentText());
+  const me = Session.getEffectiveUser().getEmail();
+  const from = { search: "your home search", contact: "your contact form", meta: "a Meta ad", google: "a Google ad" };
+  (data.items || []).forEach(function (l) {
+    const nm = ((l.first || "") + " " + (l.last || "")).trim() || "Someone";
+    const lines = [];
+    if (l.phone) lines.push("Phone: " + l.phone);
+    if (l.email) lines.push("Email: " + l.email);
+    if (l.reason) lines.push("About: " + l.reason);
+    if (l.ad) lines.push("Ad: " + l.ad);
+    Object.keys(l.answers || {}).forEach(function (k) { lines.push(k + ": " + l.answers[k]); });
+    if (l.message) lines.push("Message: " + l.message);
+    const tel = String(l.phone || "").replace(/[^0-9+]/g, "");
+    const html = "<p><b>" + nm + "</b> just came in from " + (from[l.kind] || "your website") + ".</p><p>" +
+      lines.map(function (x) { return x.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }).join("<br>") + "</p>" +
+      (tel ? '<p><a href="tel:' + tel + '">Call ' + nm + " now</a></p>" : "") + '<p><a href="' + data.crm + '">Open your client book</a></p>';
+    MailApp.sendEmail({ to: me, subject: "New lead: " + nm + " (" + (from[l.kind] || "website") + ")", body: nm + "\\n" + lines.join("\\n") + "\\n" + data.crm, htmlBody: html });
+  });
+}
+
+// 7 AM: your day in one email.
+function morningSummary() {
+  const res = UrlFetchApp.fetch(CRM + "/summary", { headers: { "x-crm-key": KEY } });
+  const s = JSON.parse(res.getContentText());
+  MailApp.sendEmail({ to: Session.getEffectiveUser().getEmail(), subject: s.subject, body: s.text, htmlBody: s.html });
+}
+
+// Run this once (and again after pasting a newer copy). It sets up the email checks, the lead alerts and the
+// morning summary, then runs each one so you can see it working.
 function setup() {
   ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger("checkInbox").timeBased().atHour(8).everyDays(1).inTimezone("America/Toronto").create();
   ScriptApp.newTrigger("checkInbox").timeBased().atHour(14).everyDays(1).inTimezone("America/Toronto").create();
+  ScriptApp.newTrigger("alertNewLeads").timeBased().everyMinutes(5).create();
+  ScriptApp.newTrigger("morningSummary").timeBased().atHour(7).everyDays(1).inTimezone("America/Toronto").create();
   checkInbox();
+  alertNewLeads();
+  morningSummary();
 }
 `;
 }
@@ -381,7 +518,7 @@ function renderContacts() {
   if (!el.firstChild) {
     el.innerHTML = `<div class="sec-h"><h2>Contacts</h2><span style="display:flex;gap:10px;align-items:center"><span class="meta" id="cCount"></span><button class="btn" data-act="import">Import</button></span></div>
     <div class="filters"><input class="search" id="q" type="search" placeholder="Search name, phone, email, area or tag" aria-label="Search contacts">
-    ${["All", "Buyer", "Seller", "Website leads", "Active", "Past clients"].map(f => `<button class="chip" data-f="${f}">${f}</button>`).join("")}</div>
+    ${["All", "Call first", "Buyer", "Seller", "Website leads", "Active", "Past clients", "On a plan"].map(f => `<button class="chip" data-f="${f}">${f}</button>`).join("")}</div>
     <div class="card list" id="cList"></div>`;
     el.querySelector("#q").oninput = e => { q = e.target.value.toLowerCase(); renderContacts(); };
     el.querySelectorAll(".chip").forEach(b => b.onclick = () => { filt = b.dataset.f; renderContacts(); });
@@ -393,9 +530,11 @@ function renderContacts() {
     if (filt === "Website leads" && !webSrc(c.source)) return false;
     if (filt === "Active" && ["New lead", "Closed"].includes(c.stage)) return false;
     if (filt === "Past clients" && !(c.stage === "Closed" || c.source === "Past client")) return false;
+    if (filt === "Call first" && !(["New lead", "Contacted"].includes(c.stage) && intent(c).s >= 60)) return false;
+    if (filt === "On a plan" && !c.plan) return false;
     if (!q) return true;
     return [name(c), c.phone, c.email, c.source, (c.tags || []).join(" "), c.crit && c.crit.areas].join(" ").toLowerCase().includes(q);
-  }).sort((a, b) => name(a).localeCompare(name(b)));
+  }).sort(filt === "Call first" ? (a, b) => intent(b).s - intent(a).s : (a, b) => name(a).localeCompare(name(b)));
   el.querySelector("#cCount").textContent = cs.length + " of " + db.contacts.length;
   el.querySelector("#cList").innerHTML = cs.length ? cs.map(c => row(c, c.stage + (c.phone ? " · " + c.phone : ""))).join("")
     : `<p class="empty">${db.contacts.length ? "No one matches. Try another search." : "No contacts yet. Add one with + New contact, or import a spreadsheet."}</p>`;
@@ -416,12 +555,12 @@ function renderImport() {
         <div class="field"><label for="impStage">Add at stage</label><select id="impStage">${opt(STAGES, "Contacted")}</select></div>
         <div class="field"><label for="impSrc">How you know them</label><select id="impSrc">${opt(SOURCES, "Sphere")}</select></div></div>
     </div>
-    <div class="card box"><h3>${staged.length ? staged.length + " contacts read" : "Nothing read yet"}</h3>
+    ${stagedAL ? alPreview() : `<div class="card box"><h3>${staged.length ? staged.length + " contacts read" : "Nothing read yet"}</h3>
       ${staged.length ? `<div class="tbl-wrap"><table><tr><th>Name</th><th>Email</th><th>Phone</th><th></th></tr>
       ${staged.map(s => `<tr><td>${esc(s.first + " " + s.last)}</td><td>${esc(s.email)}</td><td>${esc(s.phone)}</td><td>${s.dup ? `<span class="pill due">Already in book</span>` : ""}</td></tr>`).join("")}</table></div>
       <div><button class="btn primary" id="doImport">Add ${staged.filter(s => !s.dup).length} to client book</button> <button class="btn ghost" id="clearImp">Clear</button></div>`
-      : `<p class="muted">Pick a file or paste rows and you'll see them here before anything is added. People already in your book are skipped.</p>`}
-    </div></div>`;
+      : `<p class="muted">Pick a file or paste rows and you'll see them here before anything is added. People already in your book are skipped. An AgentLocator export also brings in each lead's call history, notes, pre-approval and timeframe.</p>`}
+    </div>`}</div>`;
   const drop = el.querySelector("#drop");
   drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
   drop.ondragleave = () => drop.classList.remove("over");
@@ -432,11 +571,98 @@ function renderImport() {
   if (d) d.onclick = () => { const st = el.querySelector("#impStage").value, src = el.querySelector("#impSrc").value; let n = 0;
     staged.filter(s => !s.dup).forEach(s => { db.contacts.push({ id: uid(), first: s.first, last: s.last, email: s.email, phone: s.phone, type: "Buyer", source: src, stage: st, tags: [], follow: null, followNote: "", crit: {}, log: [{ id: uid(), t: nowISO(), k: "note", x: "Imported." }], created: nowISO() }); n++; });
     staged = []; save(); toast(n + " contacts added"); show("contacts"); };
-  const c = el.querySelector("#clearImp"); if (c) c.onclick = () => { staged = []; render(); };
+  const c = el.querySelector("#clearImp"); if (c) c.onclick = () => { staged = []; stagedAL = null; render(); };
+  const al = el.querySelector("#doAL"); if (al) al.onclick = () => { const r = applyAL(el.querySelector("#impStage").value, el.querySelector("#impSrc").value);
+    toast(r.upd + " updated, " + r.add + " added, " + r.entries + " history entries"); show("contacts"); };
+}
+function alPreview() {
+  const ps = stagedAL.people, upd = ps.filter(p => p.match).length, entries = ps.reduce((t, p) => t + p.log.length, 0);
+  return `<div class="card box"><h3>AgentLocator export: ${ps.length} people</h3>
+    <p class="muted" style="font-size:14px">${upd} are already in your book and get their history added. ${ps.length - upd} are new and get added at the stage on the left. ${stagedAL.rows - ps.length ? (stagedAL.rows - ps.length) + " duplicate rows in the file are merged. " : ""}Nothing you've already typed is overwritten, and importing the same file again doesn't double anything.</p>
+    <div class="tbl-wrap"><table><tr><th>Name</th><th>Pre-approved</th><th>Timeframe</th><th>History</th><th></th></tr>
+    ${ps.slice().sort((a, b) => (b.pre === "Yes") - (a.pre === "Yes")).map(p => `<tr><td>${esc((p.first + " " + p.last).trim())}</td><td>${esc(p.pre || "—")}</td><td>${esc(p.when || "—")}</td><td>${p.log.length}</td><td>${p.match ? `<span class="pill">Update</span>` : `<span class="pill web">New</span>`}</td></tr>`).join("")}</table></div>
+    <div><button class="btn primary" id="doAL">Bring in ${entries} history entries</button> <button class="btn ghost" id="clearImp">Clear</button></div></div>`;
 }
 function readFile(f) { const r = new FileReader(); r.onload = () => parse(r.result); r.readAsText(f); }
+
+/* ---------- AgentLocator export: bring in call history, notes, pre-approval and timeframe ---------- */
+let stagedAL = null;
+function csvRows(text) { // full CSV parser: quoted fields with commas, quotes and line breaks
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < text.length; i++) { const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true; else if (ch === ",") { row.push(cur); cur = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; }
+    else cur += ch; }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+// AgentLocator times are Toronto local time ("2026-07-16 0:31:14")
+function torontoISO(s) { const m = String(s || "").match(/(\d{4})-(\d{2})-(\d{2}) (\d{1,2}):(\d{2}):(\d{2})/); if (!m) return null;
+  const guess = Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Toronto", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(guess)).map(x => [x.type, x.value]));
+  const off = Date.UTC(+p.year, p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - guess;
+  return new Date(guess - off).toISOString(); }
+const AL_TAGS = { "L: Pre-Approved": "Pre-approved", "L: Needs Pre-Approval": "Needs pre-approval", "S: First Time Buyer": "First-time buyer", "S: Home Owner": "Home owner", "FO: Just Looking 1+": "Just looking", "S: Renting - Month to Month": "Renting" };
+function parseAL(text) {
+  const rows = csvRows(text.replace(/^\uFEFF/, "")); const head = rows.shift().map(h => h.trim());
+  const col = n => head.indexOf(n);
+  const DT = "(\\d{4}-\\d{2}-\\d{2} \\d{1,2}:\\d{2}:\\d{2})";
+  const each = (str, re) => { const out = []; let m; re.lastIndex = 0; while ((m = re.exec(str || ""))) out.push(m); return out; };
+  const people = [];
+  for (const r of rows) {
+    const g = n => (col(n) >= 0 ? r[col(n)] || "" : "").trim();
+    const sys = g("System Notes");
+    const ans = q2 => { const m = sys.match(new RegExp(q2.replace(/\?/g, "\\?") + ":\\s*([^,|]*)")); const v = m ? m[1].trim() : ""; return v && v !== "-" ? v : ""; };
+    const rawTags = g("Tags").split(";").map(t => t.trim()).filter(Boolean);
+    const preQ = ans("Are you pre-approved for a Mortgage?"), sell = ans("Do you have a home to Sell?"), when = ans("Do you have a timeframe for your purchase?");
+    const pre = rawTags.includes("L: Pre-Approved") || /^yes/i.test(preQ) ? "Yes" : rawTags.includes("L: Needs Pre-Approval") || /^no/i.test(preQ) ? "Not yet" : "";
+    const log = [];
+    for (const m of each(g("Calls"), new RegExp("(.*?)\\|([^|]*)\\|[^|]*\\|" + DT + "\\|([^;]*);?", "gs")))
+      log.push({ k: "call", x: (m[2].trim() ? m[2].trim() + (m[1].trim() ? ": " : "") : "") + m[1].trim(), t: torontoISO(m[3]) });
+    for (const m of each(g("Notes"), new RegExp("(.*?)\\|([^|]*)\\|" + DT + ";?", "gs"))) { const x = m[1].trim(); if (!x || /^(Stopped|Started) campaign/i.test(x)) continue; log.push({ k: "note", x, t: torontoISO(m[3]) }); }
+    for (const m of each(sys, new RegExp("(.*?)\\|System\\|" + DT + ";?", "gs"))) { const x = m[1].trim(); if (/Registration Questionnaire/i.test(x)) log.push({ k: "note", x: "AgentLocator questionnaire: " + x.replace(/^.*?Questionnaire:\s*/i, ""), t: torontoISO(m[2]) }); }
+    for (const m of each(g("Tasks"), new RegExp("(.*?)\\|([^|]*)\\|[^|]*\\|" + DT + "\\|([^|]*)\\|([^;]*);?", "gs")))
+      log.push({ k: "note", x: "AgentLocator task (" + m[5].trim().toLowerCase() + "): " + m[1].trim() + (m[2].trim() ? " - " + m[2].trim() : ""), t: torontoISO(m[3]) });
+    if (g("Lead Description")) log.push({ k: "note", x: "Looking for: " + g("Lead Description"), t: torontoISO(g("Date Lead Registered")) });
+    const src = g("Source"), ad = src.match(/^AL-(.+)-PPC$/i);
+    log.push({ k: "note", x: "Registered on AgentLocator" + (ad ? " from the " + ad[1].replace(/-/g, " ") + " ad" : src ? " (" + src + ")" : "") + (g("Pipeline") ? ". AgentLocator stage: " + g("Pipeline") : ""), t: torontoISO(g("Date Lead Registered")) });
+    const tags = rawTags.map(t => AL_TAGS[t]).filter(Boolean); if (/^yes/i.test(sell)) tags.push("Has home to sell");
+    people.push({ first: g("First Name"), last: g("Last Name"), email: g("Email"), phone: g("Phone Number"), pre, when, tags, log: log.filter(l => l.t), registered: torontoISO(g("Date Lead Registered")) });
+  }
+  // the same person twice in the file (same email, or same phone and first name)
+  const merged = [];
+  for (const p of people) { const em = p.email.toLowerCase(), ph = digits(p.phone);
+    const m = merged.find(x => (em && x.email.toLowerCase() === em) || (ph && digits(x.phone) === ph && x.first.toLowerCase().slice(0, 3) === p.first.toLowerCase().slice(0, 3)));
+    if (m) { m.log.push(...p.log); m.tags = [...new Set(m.tags.concat(p.tags))]; m.pre = m.pre || p.pre; m.when = m.when || p.when; if (p.last.length > m.last.length) m.last = p.last; } else merged.push(p); }
+  const find = p => { const em = p.email.toLowerCase(), ph = digits(p.phone); return db.contacts.find(c => (em && (c.email || "").toLowerCase() === em) || (ph && digits(c.phone) === ph)); };
+  merged.forEach(p => { p.match = find(p); });
+  return { people: merged, rows: people.length };
+}
+function applyAL(stage, src) {
+  let upd = 0, add = 0, entries = 0;
+  for (const p of stagedAL.people) {
+    let c = p.match && byId(p.match.id);
+    if (!c) { c = { id: uid(), first: p.first, last: p.last, email: p.email, phone: p.phone, type: "Buyer", source: "AgentLocator", stage, tags: [], follow: null, followNote: "", crit: {}, log: [], created: p.registered || nowISO() }; db.contacts.push(c); add++; }
+    else upd++;
+    c.crit = c.crit || {};
+    if (p.pre && (!c.crit.pre || c.crit.pre === "Not yet")) c.crit.pre = p.pre;
+    if (p.when && !c.crit.when) c.crit.when = p.when;
+    c.tags = [...new Set((c.tags || []).concat(p.tags))];
+    if (["Import", "Sphere", "Other"].includes(c.source)) c.source = "AgentLocator";
+    if (!c.last && p.last) c.last = p.last;
+    c.log = c.log || [];
+    const have = new Set(c.log.filter(l => l.al).map(l => l.al));
+    for (const l of p.log) { const key = l.k + "|" + l.t + "|" + l.x.slice(0, 40); if (have.has(key)) continue; have.add(key); c.log.push({ id: uid(), t: l.t, k: l.k, x: l.x, al: key }); entries++; }
+    c.log.sort((a, b) => (b.t || "").localeCompare(a.t || ""));
+  }
+  stagedAL = null; save();
+  return { upd, add, entries };
+}
 function splitLine(l, sep) { const out = []; let cur = "", inq = false; for (const ch of l) { if (ch === '"') inq = !inq; else if (ch === sep && !inq) { out.push(cur); cur = ""; } else cur += ch; } out.push(cur); return out.map(s => s.trim()); }
 function parse(text) {
+  const first = String(text).slice(0, 2000).toLowerCase();
+  if (first.includes("system notes") && first.includes("pipeline")) { stagedAL = parseAL(String(text)); staged = []; render(); return; }
   const lines = String(text).split(/\r?\n/).filter(l => l.trim()); if (!lines.length) { toast("Nothing to read"); return; }
   const sep = lines[0].includes("\t") ? "\t" : ",";
   let head = splitLine(lines[0], sep).map(h => h.toLowerCase());
@@ -486,10 +712,12 @@ function drawContact() {
   const c = byId(openId); if (!c) return closeSheet(); const cr = c.crit || (c.crit = {});
   const showCrit = c.type !== "Seller", ph = digits(c.phone);
   const deals = db.deals.filter(d => d.client === c.id);
+  const homeAnnivs = deals.filter(d => d.status === "Closed" && d.close);
+  const ins = intent(c);
   const del = confirmRow("Remove this contact", () => { db.contacts = db.contacts.filter(x => x.id !== c.id); db.deals.forEach(d => { if (d.client === c.id) d.client = null; }); save(); closeSheet(); toast("Removed"); });
   sheet.innerHTML = `
   <div class="sheet-h"><div class="av">${esc(initials(c))}</div>
-    <div style="min-width:0"><h2>${esc(name(c))}</h2><div class="tags" style="margin-top:4px">${typePill(c)}<span class="pill ${webSrc(c.source) ? "web" : ""}">${esc(c.source)}</span></div></div>
+    <div style="min-width:0"><h2>${esc(name(c))}</h2><div class="tags" style="margin-top:4px">${typePill(c)}<span class="pill ${webSrc(c.source) ? "web" : ""}">${esc(c.source)}</span>${ins.s >= 60 && ["New lead", "Contacted"].includes(c.stage) ? `<span class="pill hot">Call first</span>` : ""}</div></div>
     <button class="x" aria-label="Close">×</button></div>
   <div class="quick">
     <a href="${ph ? "tel:+" + ph : "#"}" data-act-log="call">${I.call}Call</a>
@@ -506,7 +734,10 @@ function drawContact() {
     <div class="field"><label for="e-type">Client type</label><select id="e-type">${opt(["Buyer", "Seller", "Both"], c.type)}</select></div></div>
     <div class="field"><label for="e-addr">Home address</label><input id="e-addr" value="${esc(c.addr)}" placeholder="Where they live now"></div>
     <div class="grid2"><div class="field"><label for="e-bday">Birthday</label><input id="e-bday" type="date" value="${esc(c.bday)}"></div>
+    <div class="field"><label for="e-anniv">Anniversary</label><input id="e-anniv" type="date" value="${esc(c.anniv)}"></div></div>
+    <div class="grid2"><div class="field"><label for="e-annivl">What the anniversary is</label><input id="e-annivl" value="${esc(c.annivLabel)}" placeholder="Wedding anniversary"></div>
     <div class="field"><label>Added</label><input value="${c.created ? new Date(c.created).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : ""}" disabled></div></div>
+    ${homeAnnivs.length ? `<p class="muted" style="font-size:13px">Home anniversary: ${homeAnnivs.map(d => esc(d.addr || "home") + ", " + dLabel(d.close)).join("; ")} (from their closed deal${homeAnnivs.length > 1 ? "s" : ""})</p>` : ""}
   </div>
 
   <div class="card box"><h3>Where they are</h3>
@@ -519,6 +750,11 @@ function drawContact() {
     <div class="field"><label for="s-fnote">What for</label><input id="s-fnote" value="${esc(c.followNote)}" placeholder="Call about showings"></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${[["Today", 0], ["Tomorrow", 1], ["In 3 days", 3], ["Next week", 7], ["In a month", 30]].map(([l, n]) => `<button class="btn" data-snooze="${n}">${l}</button>`).join("")}
     ${c.follow ? `<button class="btn ghost" data-clearfollow>Clear</button><a class="btn ghost" href="${calLink("Follow up: " + name(c), c.follow, (c.followNote || "") + "\n" + (c.phone || "") + "\n" + (c.email || ""))}" target="_blank" rel="noopener">Add to Google Calendar</a>` : ""}</div>
+    <div class="plan">${c.plan && PLANS[c.plan.name] ? `<div class="plan-on"><b>${esc(c.plan.name)} plan</b> · step ${c.plan.i + 1} of ${PLANS[c.plan.name].length}
+        <ol>${PLANS[c.plan.name].map((st, i) => `<li class="${i < c.plan.i ? "done" : i === c.plan.i ? "now" : ""}">Day ${st[0]}: ${esc(st[1])}</li>`).join("")}</ol>
+        <button class="btn ghost" data-stopplan style="padding-left:0">Stop plan</button></div>`
+      : `<div class="grid2" style="align-items:end"><div class="field"><label for="s-plan">Follow-up plan</label><select id="s-plan"><option value="">Pick a plan…</option>${Object.keys(PLANS).map(k => `<option>${esc(k)}</option>`).join("")}</select></div>
+        <div><button class="btn" data-startplan>Start plan</button></div></div><p class="muted" style="font-size:12px">A plan books each next follow-up for you when you tick the last one done.</p>`}</div>
   </div>
 
   ${showCrit ? `<div class="card box"><h3>What they're looking for</h3>
@@ -546,7 +782,9 @@ function drawContact() {
   const $ = s => sheet.querySelector(s);
   $(".x").onclick = () => closeSheet();
   const bind = (sel, key, fn) => { const el = $(sel); if (el) el.onchange = e => { c[key] = fn ? fn(e.target.value) : e.target.value.trim(); save(); if (["first", "last", "type", "source"].includes(key)) drawContact(); }; };
-  bind("#e-first", "first"); bind("#e-last", "last"); bind("#e-phone", "phone"); bind("#e-email", "email"); bind("#e-src", "source"); bind("#e-type", "type"); bind("#e-addr", "addr"); bind("#e-bday", "bday");
+  bind("#e-first", "first"); bind("#e-last", "last"); bind("#e-phone", "phone"); bind("#e-email", "email"); bind("#e-src", "source"); bind("#e-type", "type"); bind("#e-addr", "addr"); bind("#e-bday", "bday"); bind("#e-anniv", "anniv"); bind("#e-annivl", "annivLabel");
+  const sp = $("[data-startplan]"); if (sp) sp.onclick = () => { const v = $("#s-plan").value; if (!v) { toast("Pick a plan first"); return; } startPlan(c, v); save(); drawContact(); toast(v + " plan started"); };
+  const xp = $("[data-stopplan]"); if (xp) xp.onclick = () => { addLog(c, "note", "Stopped follow-up plan: " + c.plan.name); c.plan = null; save(); drawContact(); };
   $("#s-stage").onchange = e => { addLog(c, "note", "Moved from " + c.stage + " to " + e.target.value); c.stage = e.target.value; save(); drawContact(); toast("Moved to " + c.stage); };
   $("#s-newtag").onkeydown = e => { if (e.key === "Enter" && e.target.value.trim()) { e.preventDefault(); (c.tags = c.tags || []).push(e.target.value.trim()); save(); drawContact(); $("#s-newtag").focus(); } };
   sheet.querySelectorAll("[data-rmtag]").forEach(b => b.onclick = () => { c.tags.splice(+b.dataset.rmtag, 1); save(); drawContact(); });
@@ -604,19 +842,33 @@ function renderDeals() {
     <div class="card stat"><b>${db.deals.filter(d => d.status === "Firm").length}</b><span>Firm, waiting to close</span></div>
     <div class="card stat"><b>${vol ? "$" + (vol / 1e6).toFixed(2) + "M" : "$0"}</b><span>Closed in ${yr}</span></div>
   </div>
+  ${commissionCard(yr)}
   <div class="filters">${Object.keys(groups).map(f => `<button class="chip" data-df="${f}" aria-pressed="${f === dfilt}">${f}</button>`).join("")}
     <button class="btn primary" data-act="new-deal" style="margin-left:auto">+ New deal</button></div>
   <div class="deals">${ds.length ? ds.map(d => { const c = byId(d.client); const docs = d.docs || []; const done = docs.filter(x => x.done).length; const k = keyDate(d); const n = daysTo(k[1]);
     return `<button class="dcard" data-deal="${d.id}">
       <div class="top-l"><span class="pill ${stCls(d.status)}">${d.status}</span><span class="pill ${d.side === "Seller" ? "seller" : "buyer"}">${d.side === "Seller" ? "Selling" : "Buying"}</span></div>
       <div><div class="addr">${esc(d.addr || "Untitled property")}</div><div class="sub">${esc([d.area, c ? name(c) : ""].filter(Boolean).join(" · "))}</div></div>
-      <div class="price">${d.price ? money(d.price) : d.list ? "List " + money(d.list) : "No price yet"}</div>
+      <div class="price">${d.price ? money(d.price) : d.list ? "List " + money(d.list) : "No price yet"}${commission(d) ? `<span class="comm">${d.status === "Closed" ? "Earned" : "Commission"} ${money(commission(d))}</span>` : ""}</div>
       <div><div class="bar-l"><span>Paperwork</span><span>${done} of ${docs.length}</span></div><div class="bar"><i style="width:${docs.length ? done / docs.length * 100 : 0}%"></i></div></div>
       <div class="next">${k[1] ? `<span class="pill ${n !== null && n >= 0 && n <= 3 && d.status !== "Closed" ? "due" : ""}">${k[0]}: ${inDays(n)}</span>` : ""}<span class="muted">Next: ${esc(nextStep(d))}</span></div>
     </button>`; }).join("") : `<p class="empty">${db.deals.length ? "No deals in this list." : "No deals yet. Add the first property you're working on with + New deal."}</p>`}</div>
   ${inboxCard()}`;
   el.querySelectorAll("[data-df]").forEach(b => b.onclick = () => { dfilt = b.dataset.df; renderDeals(); });
+  const gi = el.querySelector("#goalIn"); if (gi) gi.onchange = () => { db.goal = num(gi.value); save(); renderDeals(); };
 }
+function commissionCard(yr) {
+  const earned = db.deals.filter(d => d.status === "Closed" && (d.close || "").startsWith(yr)).reduce((t, d) => t + commission(d), 0);
+  const firm = db.deals.filter(d => ["Firm", "Conditional"].includes(d.status)).reduce((t, d) => t + commission(d), 0);
+  const open = db.deals.filter(d => d.status !== "Closed").reduce((t, d) => t + commission(d), 0);
+  const goal = db.goal || 0, pct = goal ? Math.min(100, Math.round(earned / goal * 100)) : 0;
+  const missing = db.deals.filter(d => d.status !== "Closed" && !commission(d)).length;
+  return `<div class="card box comm-card"><div class="inbox-h"><h3>Commission</h3><span class="meta">${missing ? missing + " open deal" + (missing > 1 ? "s" : "") + " without a commission yet" : "Your earnings"}</span></div>
+    <div class="comm-grid"><div><small>Earned in ${yr}</small><b>${money(earned) || "$0"}</b></div><div><small>Coming in (firm and conditional)</small><b>${money(firm) || "$0"}</b></div>
+    <div><small>All open deals</small><b>${money(open) || "$0"}</b></div><div><small>Goal for ${yr}</small><b><input id="goalIn" inputmode="numeric" value="${goal ? money(goal) : ""}" placeholder="Set a goal" aria-label="Commission goal"></b></div></div>
+    ${goal ? `<div class="bar-l"><span>${pct}% of your goal</span><span>${money(Math.max(0, goal - earned))} to go</span></div><div class="bar"><i style="width:${pct}%"></i></div>` : ""}</div>`;
+}
+
 function openDeal(id) { openId = "deal:" + id; drawDeal(id); openPanel(); }
 function drawDeal(id) {
   const d = db.deals.find(x => x.id === id); if (!d) return closeSheet();
@@ -624,7 +876,8 @@ function drawDeal(id) {
   const done = d.docs.filter(x => x.done).length, pct = d.docs.length ? Math.round(done / d.docs.length * 100) : 0;
   const dt = (l, v) => { const n = daysTo(v); return `<div class="${n !== null && n >= 0 && n <= 3 && d.status !== "Closed" ? "soon" : ""}"><small>${l}</small><b>${dLabel(v)}</b><em>${inDays(n)}</em></div>`; };
   const clients = db.contacts.slice().sort((a, b) => name(a).localeCompare(name(b)));
-  const del = confirmRow("Remove this deal", () => { db.deals = db.deals.filter(x => x.id !== d.id); save(); closeSheet(); toast("Deal removed"); });
+  const del = confirmRow("Remove this deal", () => { (d.files || []).forEach(f => fetch("/api/crm/files/" + d.id + "/" + f.id, { method: "DELETE", credentials: "same-origin" }));
+    db.deals = db.deals.filter(x => x.id !== d.id); save(); closeSheet(); toast("Deal removed"); });
   const k = keyDate(d);
   sheet.innerHTML = `<div class="sheet-h"><div style="min-width:0"><div class="tags"><span class="pill ${stCls(d.status)}">${d.status}</span><span class="pill ${d.side === "Seller" ? "seller" : "buyer"}">${d.side === "Seller" ? "Selling" : "Buying"}</span></div>
     <h2 style="margin-top:6px">${esc(d.addr || "Untitled property")}</h2><div class="muted">${esc(d.area || "")}</div></div><button class="x" aria-label="Close">×</button></div>
@@ -646,6 +899,9 @@ function drawDeal(id) {
     <div class="field"><label for="d-cond">Conditions due</label><input type="date" id="d-cond" value="${d.cond || ""}"></div>
     <div class="field"><label for="d-close">Closing</label><input type="date" id="d-close" value="${d.close || ""}"></div>
     <div class="field"><label for="d-live">${d.side === "Seller" ? "Listing goes live" : "Possession"}</label><input type="date" id="d-live" value="${d.live || ""}"></div></div>
+    <div class="grid2"><div class="field"><label for="d-cpct">Your commission (%)</label><input id="d-cpct" inputmode="decimal" value="${d.commPct || ""}" placeholder="2.5"></div>
+    <div class="field"><label for="d-camt">Or a fixed amount</label><input id="d-camt" inputmode="numeric" value="${d.commAmt ? money(d.commAmt) : ""}" placeholder="$0"></div></div>
+    ${commission(d) ? `<p class="muted" style="font-size:13px">${d.status === "Closed" ? "Earned" : "Expected"}: <b style="color:var(--ink)">${money(commission(d))}</b>${d.commPct && !d.commAmt ? " (" + d.commPct + "% of " + money(dealValue(d)) + ")" : ""}</p>` : ""}
     <div class="grid2"><div class="field"><label for="d-otherag">Other agent</label><input id="d-otherag" value="${esc(d.otherAgent)}" placeholder="Name, brokerage, phone"></div>
     <div class="field"><label for="d-lawyer">Client's lawyer</label><input id="d-lawyer" value="${esc(d.lawyer)}" placeholder="Name, phone, email"></div></div>
     ${k[1] && d.status !== "Closed" ? `<div><a class="btn ghost" style="padding-left:0" target="_blank" rel="noopener" href="${calLink(k[0] + ": " + (d.addr || ""), k[1], (d.area || ""))}">Add ${k[0].toLowerCase()} to Google Calendar</a></div>` : ""}
@@ -653,6 +909,10 @@ function drawDeal(id) {
   <div class="card box"><h3>Paperwork</h3><div class="bar-l"><span>${done} of ${d.docs.length} done</span><span>${pct}%</span></div><div class="bar"><i style="width:${pct}%"></i></div>
     <div class="docs">${d.docs.map((x, i) => `<label class="doc ${x.done ? "done" : ""}"><input type="checkbox" data-doc="${i}" ${x.done ? "checked" : ""}><span>${esc(x.d)}</span><button type="button" class="x-sm" data-rmdoc="${i}" aria-label="Remove ${esc(x.d)}">×</button></label>`).join("")}</div>
     <div class="inline-add"><input id="d-newdoc" placeholder="Add a document or step" aria-label="Add a document or step"><button class="btn" id="d-adddoc">Add</button></div></div>
+  <div class="card box"><h3>Documents</h3>
+    <div class="files">${(d.files || []).map((f, i) => `<div class="file"><span class="fi">${esc((f.name.split(".").pop() || "").slice(0, 4).toUpperCase())}</span>
+      <a href="/api/crm/files/${d.id}/${f.id}" target="_blank" rel="noopener">${esc(f.name)}</a><small>${fsize(f.size)}</small><button type="button" class="x-sm" data-rmfile="${i}" aria-label="Remove ${esc(f.name)}">×</button></div>`).join("") || `<p class="muted" style="font-size:14px">No documents yet. Attach the signed agreement, the APS, amendments, the deposit receipt and so on.</p>`}</div>
+    <div><label class="btn" for="d-file">Attach a document</label><input id="d-file" type="file" multiple hidden accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.heic,.xls,.xlsx,.txt"><span class="muted" style="font-size:12px;margin-left:8px">PDF, Word or photos, up to 5 MB each</span></div></div>
   <div class="card box"><h3>Updates and notes</h3>
     <div class="inline-add"><input id="d-newup" placeholder="What's new on this deal?" aria-label="Add an update"><button class="btn" id="d-addup">Add</button></div>
     <div class="log">${d.ups.length ? d.ups.map((u, i) => `<div class="log-item"><i>${u.src === "email" ? "@" : "N"}</i><div><button class="x-sm" data-rmup="${i}" aria-label="Delete update">×</button><small>${u.src === "email" ? "From your email" : "Note"} · ${new Date(u.t).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</small>${esc(u.x)}</div></div>`).join("") : `<p class="muted">No updates yet.</p>`}</div></div>
@@ -667,6 +927,13 @@ function drawDeal(id) {
   bind("#d-st", "status"); bind("#d-list", "list", num); bind("#d-pr", "price", num); bind("#d-dep", "dep", num);
   bind("#d-offer", "offer", v => v || null); bind("#d-cond", "cond", v => v || null); bind("#d-close", "close", v => v || null); bind("#d-live", "live", v => v || null);
   bind("#d-otherag", "otherAgent"); bind("#d-lawyer", "lawyer");
+  $("#d-cpct").onchange = e => { d.commPct = parseFloat(String(e.target.value).replace(/[^\d.]/g, "")) || 0; save(); drawDeal(id); };
+  $("#d-camt").onchange = e => { d.commAmt = num(e.target.value); save(); drawDeal(id); };
+  $("#d-file").onchange = async e => { for (const f of e.target.files) await uploadFile(d, f); drawDeal(id); };
+  sheet.querySelectorAll("[data-rmfile]").forEach(b => b.onclick = async () => { const f = d.files[+b.dataset.rmfile];
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Remove?"; return; }
+    await fetch("/api/crm/files/" + d.id + "/" + f.id, { method: "DELETE", credentials: "same-origin" }); d.files.splice(+b.dataset.rmfile, 1);
+    d.ups.unshift({ t: nowISO(), src: "note", x: "Removed document " + f.name }); save(); drawDeal(id); });
   sheet.querySelectorAll("[data-doc]").forEach(b => b.onchange = () => { d.docs[+b.dataset.doc].done = b.checked; save(); drawDeal(id); });
   sheet.querySelectorAll("[data-rmdoc]").forEach(b => b.onclick = e => { e.preventDefault(); d.docs.splice(+b.dataset.rmdoc, 1); save(); drawDeal(id); });
   const addDoc = () => { const v = $("#d-newdoc").value.trim(); if (!v) return; d.docs.push({ d: v, done: false }); save(); drawDeal(id); $("#d-newdoc").focus(); };
@@ -676,6 +943,20 @@ function drawDeal(id) {
   sheet.querySelectorAll("[data-rmup]").forEach(b => b.onclick = () => { d.ups.splice(+b.dataset.rmup, 1); save(); drawDeal(id); });
   del.wire();
 }
+const fsize = n => n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+async function uploadFile(d, f) {
+  if (f.size > 5 * 1048576) { toast(f.name + " is over 5 MB"); return; }
+  const fid = uid(); toast("Uploading " + f.name + "…");
+  try {
+    const r = await fetch("/api/crm/files/" + d.id + "/" + fid, { method: "PUT", credentials: "same-origin", body: f,
+      headers: { "content-type": f.type || "application/octet-stream", "x-file-name": encodeURIComponent(f.name) } });
+    if (r.status === 401) { showSignin(); return; }
+    if (!r.ok) throw new Error(r.status);
+    (d.files = d.files || []).push({ id: fid, name: f.name, size: f.size, type: f.type, t: nowISO() });
+    d.ups.unshift({ t: nowISO(), src: "note", x: "Attached " + f.name }); save(); toast(f.name + " attached");
+  } catch (e) { toast("Couldn't upload " + f.name + ". Try again."); }
+}
+
 function newDeal(clientId) {
   openId = "__newdeal";
   const clients = db.contacts.slice().sort((a, b) => name(a).localeCompare(name(b)));
@@ -702,7 +983,7 @@ function renderMeta() {
   const el = $id("v-meta");
   const month = iso(new Date()).slice(0, 7);
   const camps = [...new Set(db.meta.map(m => m.campaign).filter(Boolean))];
-  el.innerHTML = `<div class="sec-h"><h2>Meta leads</h2><span style="display:flex;gap:10px;align-items:center"><span class="meta">From your Facebook and Instagram lead ads</span><button class="btn" id="mAdd">+ Add lead</button></span></div>
+  el.innerHTML = `<div class="sec-h"><h2>Ad leads</h2><span style="display:flex;gap:10px;align-items:center"><span class="meta">From your Facebook, Instagram and Google lead ads</span><button class="btn" id="mAdd">+ Add lead</button></span></div>
   <div class="stats">
     <div class="card stat hot"><b>${db.meta.filter(m => m.isNew).length}</b><span>Not contacted yet</span></div>
     <div class="card stat"><b>${db.meta.filter(m => (m.t || "").startsWith(month)).length}</b><span>This month</span></div>
@@ -712,20 +993,21 @@ function renderMeta() {
   <div class="card list">${db.meta.length ? db.meta.slice().sort((a, b) => (b.t || "").localeCompare(a.t || "")).map(m => `<div class="mlead">
     <div class="av">${esc(((m.first || "?")[0] + (m.last || "")[0] || "").toUpperCase())}</div>
     <div class="who" style="min-width:0"><b>${m.isNew ? '<span class="new-dot" aria-label="New"></span>' : ""}${esc((m.first + " " + m.last).trim() || "No name")}</b>
-      <small>${esc([m.phone, m.email].filter(Boolean).join(" · "))}</small><small>${m.ad ? "Ad: " + esc(m.ad) + " · " : ""}${m.campaign ? esc(m.campaign) + " · " : ""}${timeAgo(m.t)}</small>
+      <small>${esc([m.phone, m.email].filter(Boolean).join(" · "))}</small><small><span class="pill ${m.via === "Google" ? "buyer" : "web"}" style="font-size:11px;padding:0 7px">${m.via === "Google" ? "Google" : "Meta"}</span> ${m.ad ? "Ad: " + esc(m.ad) + " · " : ""}${m.campaign ? esc(m.campaign) + " · " : ""}${timeAgo(m.t)}</small>
       ${Object.keys(m.a || {}).length ? `<div class="answers">${Object.entries(m.a).map(([k, v]) => `<span>${esc(k)}: <b>${esc(v)}</b></span>`).join("")}</div>` : ""}</div>
     <div class="acts">${m.moved ? `<span class="pill">In client book</span>` : `<button class="btn primary" data-mmove="${m.id}">Add to client book</button>`}
       ${m.isNew ? `<button class="btn ghost" data-mseen="${m.id}">Mark contacted</button>` : ""}<button class="x-sm" data-mdel="${m.id}">Remove</button></div></div>`).join("")
-    : `<p class="empty">No Meta leads yet. Once your lead ads are connected, people who fill in your ad forms show up here within a minute. You can also add one by hand.</p>`}</div>
-  <p class="how"><b>Connecting your ads:</b> your Facebook and Instagram lead forms can send new leads here automatically. <button class="linkbtn" data-act="connections">Set it up</button></p>`;
+    : `<p class="empty">No ad leads yet. Once your lead ads are connected, people who fill in your ad forms show up here within a minute. You can also add one by hand.</p>`}</div>
+  <p class="how"><b>Connecting your ads:</b> your Facebook, Instagram and Google lead forms can send new leads here automatically. <button class="linkbtn" data-act="connections">Set it up</button></p>`;
   el.querySelector("#mAdd").onclick = addMetaLead;
   el.querySelectorAll("[data-mseen]").forEach(b => b.onclick = () => { const m = db.meta.find(x => x.id === b.dataset.mseen); m.isNew = false; save(); render(); });
   el.querySelectorAll("[data-mdel]").forEach(b => b.onclick = () => { if (b.dataset.sure) { db.meta = db.meta.filter(x => x.id !== b.dataset.mdel); save(); render(); toast("Removed"); } else { b.dataset.sure = "1"; b.textContent = "Tap again to remove"; } });
   el.querySelectorAll("[data-mmove]").forEach(b => b.onclick = () => { const m = db.meta.find(x => x.id === b.dataset.mmove);
     const ans = Object.entries(m.a || {}).map(([k, v]) => k + ": " + v).join(", ");
     const sell = /sell/i.test(JSON.stringify(m.a || {})) && !/buy/i.test(JSON.stringify(m.a || {}));
-    const c = { id: uid(), first: m.first, last: m.last, phone: m.phone, email: m.email, type: sell ? "Seller" : "Buyer", source: "Meta ad", stage: "New lead", tags: m.campaign ? [m.campaign] : [], follow: rel(0), followNote: "Call Meta lead", crit: {},
-      log: [{ id: uid(), t: m.t || nowISO(), k: "note", x: "Came in from a Meta ad" + (m.ad ? " (" + m.ad + ")" : "") + "." + (ans ? " " + ans : "") }], created: m.t || nowISO() };
+    const g = m.via === "Google";
+    const c = { id: uid(), first: m.first, last: m.last, phone: m.phone, email: m.email, type: sell ? "Seller" : "Buyer", source: g ? "Google ad" : "Meta ad", stage: "New lead", tags: m.campaign ? [m.campaign] : [], follow: rel(0), followNote: g ? "Call Google lead" : "Call Meta lead", crit: {},
+      log: [{ id: uid(), t: m.t || nowISO(), k: "note", x: "Came in from a " + (g ? "Google" : "Meta") + " ad" + (m.ad ? " (" + m.ad + ")" : "") + "." + (ans ? " " + ans : "") }], created: m.t || nowISO() };
     db.contacts.push(c); m.moved = true; m.isNew = false; save(); render(); toast(m.first + " added to your client book"); });
 }
 function addMetaLead() {
@@ -745,11 +1027,39 @@ function addMetaLead() {
     save(); closeSheet(); toast("Lead added"); };
 }
 
+/* ---------- lead sources report ---------- */
+function openReport() {
+  openId = "__report";
+  const yr = String(new Date().getFullYear());
+  const rows = {};
+  const get = src => rows[src] || (rows[src] = { src, leads: 0, year: 0, reached: 0, active: 0, closed: 0, comm: 0 });
+  db.contacts.forEach(c => { const r = get(c.source || "Other"); r.leads++; if ((c.created || "").startsWith(yr)) r.year++;
+    if (wasReached(c) || ["Showing homes", "Offer out", "Firm deal", "Closed"].includes(c.stage)) r.reached++; if (["Showing homes", "Offer out", "Firm deal"].includes(c.stage)) r.active++; });
+  db.deals.forEach(d => { const c = byId(d.client); if (!c || d.status !== "Closed") return; const r = get(c.source || "Other"); r.closed++; r.comm += commission(d); });
+  db.meta.filter(m => !m.moved).forEach(m => { const r = get(m.via === "Google" ? "Google ad" : "Meta ad"); r.leads++; if ((m.t || "").startsWith(yr)) r.year++; });
+  const list = Object.values(rows).sort((a, b) => b.comm - a.comm || b.closed - a.closed || b.leads - a.leads);
+  const pct = (a, b) => b ? Math.round(a / b * 100) + "%" : "—";
+  sheet.innerHTML = `<div class="sheet-h"><h2>Where your business comes from</h2><button class="x" aria-label="Close">×</button></div>
+  <p class="muted" style="font-size:14px">Every lead source, how many you reached, and which ones turned into closed deals and commission. Closed deals count once the deal is marked Closed and linked to the client.</p>
+  <div class="card box"><div class="tbl-wrap"><table class="rep"><tr><th>Source</th><th>Leads</th><th>${yr}</th><th>Reached</th><th>Active</th><th>Closed</th><th>Commission</th></tr>
+  ${list.map(r => `<tr><td><b>${esc(r.src)}</b></td><td>${r.leads}</td><td>${r.year}</td><td>${pct(r.reached, r.leads)}</td><td>${r.active}</td><td>${r.closed}${r.closed ? ` <span class="muted">(${pct(r.closed, r.leads)})</span>` : ""}</td><td>${money(r.comm) || "—"}</td></tr>`).join("")}</table></div></div>
+  <p class="muted" style="font-size:13px">Tip: compare what you spend on each ad source with the commission it brings in to see where your money works hardest.</p>`;
+  openPanel(); sheet.querySelector(".x").onclick = () => closeSheet();
+}
+
 /* ---------- global clicks ---------- */
 document.addEventListener("click", e => {
   const d = e.target.closest("[data-done]");
   if (d) { e.stopPropagation(); const c = byId(d.dataset.done); d.classList.add("done"); d.textContent = "✓";
-    addLog(c, "note", "Done: " + (c.followNote || "follow-up")); c.follow = null; c.followNote = ""; save(); setTimeout(() => { render(); toast("Done. Set the next one from their card."); }, 350); return; }
+    addLog(c, "note", "Done: " + (c.followNote || "follow-up")); c.follow = null; c.followNote = "";
+    const more = advancePlan(c);
+    save(); setTimeout(() => { render(); toast(more ? "Done. Next step booked for " + dueLabel(c).toLowerCase() + "." : "Done. Set the next one from their card."); }, 350); return; }
+  const w = e.target.closest("[data-wish]");
+  if (w) { e.stopPropagation(); const c = byId(w.dataset.wish); addLog(c, "text", "Sent " + w.dataset.wlabel.toLowerCase() + " wishes"); save(); return; }
+  const cl = e.target.closest("[data-call]");
+  if (cl) { e.stopPropagation(); const c = byId(cl.dataset.call); addLog(c, "call", "Called from the client book"); if (c.stage === "New lead") c.stage = "Contacted"; save(); setTimeout(render, 300); return; }
+  const ci = e.target.closest("[data-checkin]");
+  if (ci) { e.stopPropagation(); const c = byId(ci.dataset.checkin); startPlan(c, "Past client"); save(); render(); toast("Check-in plan started for " + (c.first || "them")); return; }
   const a = e.target.closest("[data-act]");
   if (a) { const k = a.dataset.act; if (k === "new-contact") newContact(); else if (k === "new-deal") newDeal(); else if (k === "import") show("import"); else if (k === "connections") openConnections(); return; }
   const g = e.target.closest("[data-go]"); if (g) { show(g.dataset.go); return; }
@@ -767,6 +1077,7 @@ $id("menuBtn").onclick = () => { const l = $id("menuList"); l.hidden = !l.hidden
 $id("mConn").onclick = () => { $id("menuList").hidden = true; openConnections(); };
 $id("mImport").onclick = () => { $id("menuList").hidden = true; show("import"); };
 $id("mExport").onclick = () => { $id("menuList").hidden = true; exportCSV(); };
+$id("mReport").onclick = () => { $id("menuList").hidden = true; openReport(); };
 $id("mRefresh").onclick = async () => { $id("menuList").hidden = true; if (await fetchBook()) { render(); toast("Up to date"); } };
 $id("mLogout").onclick = async () => { $id("menuList").hidden = true; await api("logout", { method: "POST" }); db = null; showSignin(); };
 

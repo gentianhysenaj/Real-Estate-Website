@@ -250,3 +250,38 @@ th{color:var(--muted);font-weight:600;border-top:0}
 .steps a{color:var(--accent-strong)}
 .linkbtn{all:unset;cursor:pointer;color:var(--accent-strong);font-weight:600}
 .linkbtn:hover{text-decoration:underline}
+
+/* deal desk upgrades: call first, dates, plans, commission, documents, connections */
+.av.hot{background:var(--due-soft);color:var(--due)}
+.av.gift,.av.home{background:var(--accent-soft);font-size:16px}
+.btn.small{padding:4px 10px;font-size:12px}
+.pill.hot{background:var(--due-soft);color:var(--due)}
+.row .side .btn{text-decoration:none;color:var(--ink)}
+.plan{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:6px}
+.plan-on{font-size:14px}
+.plan-on ol{margin:8px 0 4px;padding-left:20px;display:grid;gap:3px;font-size:13px;color:var(--muted)}
+.plan-on li.done{text-decoration:line-through}
+.plan-on li.now{color:var(--ink);font-weight:600}
+.price .comm{display:block;font-size:13px;font-weight:600;color:var(--ok);letter-spacing:-.01em;margin-top:2px}
+.comm-card{padding:16px 18px}
+.comm-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.comm-grid div{display:grid;gap:2px}
+.comm-grid small{color:var(--muted);font-size:12px}
+.comm-grid b{font-size:20px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.comm-grid input{all:unset;width:100%;font:inherit;border-bottom:1px dashed var(--line)}
+.comm-grid input::placeholder{color:var(--muted);font-size:15px;font-weight:500}
+@media (max-width:640px){.comm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.files{display:grid;gap:6px}
+.file{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;font-size:14px}
+.file a{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file small{color:var(--muted);font-size:12px}
+.file .fi{width:34px;height:26px;border-radius:6px;background:var(--info-soft);color:var(--info);display:grid;place-items:center;font-size:10px;font-weight:700}
+.jobs{margin:0;padding-left:18px;display:grid;gap:8px;font-size:14px}
+.jobs .dot-l{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-left:4px}
+.note{font-size:13px;background:var(--accent-soft);color:var(--accent-strong);padding:10px 12px;border-radius:10px}
+table.rep th,table.rep td{padding:9px 6px;white-space:nowrap}
+table.rep th:first-child,table.rep td:first-child{padding-left:0}
+table.rep td:last-child,table.rep th:last-child{text-align:right;padding-right:0}
+.m-only{display:none}
+@media (max-width:560px){.m-only{display:inline}.dpill{display:none}}
+@media (max-width:560px){.row.wrap .who small{white-space:normal}}
