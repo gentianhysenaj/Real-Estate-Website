@@ -14,8 +14,9 @@
       photo at the centre of the screen (0..1), zoom 1 = photo just covers the screen.
    ─────────────────────────────────────────────────────────────────────────────────────────── */
 const TOUR = {
-  frames: {dir: "/assets/tour/frames/", count: 529, ext: "webp", digits: 4,
-           strip: {dir: "/assets/tour/frames-hd/", rect: [.25, 0, .75, 1]}},
+  // w/h: the size of one frame; a strip file is the middle of a w x h frame
+  frames: {dir: "/assets/tour/frames/", count: 529, ext: "webp", digits: 4, w: 1600, h: 900,
+           strip: {dir: "/assets/tour/frames-hd/", rect: [.25, 0, .75, 1], w: 1920, h: 1080}},
   video: "",
   // One house, eight AI-generated shots made to match (Canva). The camera keeps moving through each
   // hand-off. Pairs marked seamlessOut/seamlessIn share one camera position, so the front door and the
@@ -64,35 +65,90 @@ const TOUR = {
   const OVERLAP = .05;                                         // how long neighbouring sets melt together
 
   /* ---------- 1. frame sequence on a canvas ---------- */
+  // What keeps it smooth: every frame is downloaded once and kept compressed (about 40 MB on a laptop),
+  // and only the frames around the camera are decoded, off the main thread, a little ahead of time.
+  // Drawing a frame is then a plain copy, so scrolling never waits on an image decode. The canvas is
+  // never bigger than the frames themselves (the browser scales it up for free), so each draw is cheap.
   const F = TOUR.frames, useFrames = F && F.count > 0;
   const canvas = $("tour-canvas"), ctx = canvas && canvas.getContext("2d", {alpha: false}), loader = $("tour-loader");
-  const frames = [];
-  let loaded = 0, lastDrawn = -1;
+  const ua = navigator.userAgent, canBitmap = "createImageBitmap" in window;
+  // Safari (and every iPhone browser) decodes images off the main thread with img.decode(); Chrome and
+  // Firefox do it with createImageBitmap(blob)
+  const webkit = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg\/|OPR|Android/.test(ua);
+  const blobs = [], bmps = new Map(), busy = new Set();
+  let loaded = 0, lastDrawn = -1, dir = 1;
   // Portrait screens (phones, tablets held upright) only ever see the middle of a 16:9 frame, so they
   // load the close-up set: the middle strip at the video's full height, sharper than a scaled-down frame.
   const strip = useFrames && F.strip && innerWidth / innerHeight < .89 ? F.strip : null;
+  const small = matchMedia("(pointer: coarse)").matches || innerWidth < 900;
+  const AHEAD = small ? 18 : 24, BEHIND = small ? 6 : 8, DECODERS = small ? 3 : 4, CAP = AHEAD + BEHIND + 4;
+  const idx = p => Math.round(clamp(p) * (F.count - 1));
   if (useFrames) {
     shotsEl.hidden = true; canvas.hidden = false; if (loader) loader.hidden = false;
-    const dir = strip ? strip.dir : F.dir;
-    const name = i => dir + String(i + 1).padStart(F.digits, "0") + "." + F.ext + (F.v ? "?v=" + F.v : "");
-    const order = [], seen = new Set();                        // coarse pass first, then fill the gaps
-    for (const step of [16, 4, 1]) for (let i = 0; i < F.count; i += step) if (!seen.has(i)) { seen.add(i); order.push(i); }
+    const fdir = strip ? strip.dir : F.dir;
+    const name = i => fdir + String(i + 1).padStart(F.digits, "0") + "." + F.ext + (F.v ? "?v=" + F.v : "");
+    // download order: the frames where the visitor is first, then a coarse pass, then the gaps
+    const start = Math.round(clamp(scrollY / Math.max(1, journey.offsetHeight - innerHeight)) * (F.count - 1));
+    const order = [], seen = new Set(), add = i => { if (i >= 0 && i < F.count && !seen.has(i)) { seen.add(i); order.push(i); } };
+    for (let k = 0; k <= AHEAD; k++) add(start + k);
+    for (const step of [16, 4, 1]) for (let i = 0; i < F.count; i += step) add(i);
     let next = 0;
+    const got = (i, item) => {
+      if (item) blobs[i] = item;
+      loaded++;
+      if (loader) { loader.style.setProperty("--pct", (loaded / F.count * 100).toFixed(1) + "%"); if (loaded === F.count) loader.classList.add("done"); }
+      if (item) decodeAround();
+      pump();
+    };
     const pump = () => {
       if (next >= order.length) return;
-      const i = order[next++], img = new Image();
-      img.decoding = "async";
-      img.onload = async () => {
-        try { await img.decode(); } catch (_) {}
-        frames[i] = img; loaded++;
-        if (loader) { loader.style.setProperty("--pct", (loaded / F.count * 100).toFixed(1) + "%"); if (loaded === F.count) loader.classList.add("done"); }
-        if (lastDrawn < 0) render(shown);
-        pump();
-      };
-      img.onerror = () => { loaded++; pump(); };
-      img.src = name(i);
+      const i = order[next++];
+      if (canBitmap) fetch(name(i)).then(r => r.ok ? r.blob() : null).then(b => got(i, b), () => got(i, null));
+      else {                                                   // very old browsers: plain images
+        const img = new Image(); img.decoding = "async";
+        img.onload = () => got(i, img); img.onerror = () => got(i, null);
+        img.src = name(i);
+      }
     };
     for (let k = 0; k < 6; k++) pump();
+  }
+  const decode = async blob => {
+    if (!webkit) return createImageBitmap(blob);
+    const url = URL.createObjectURL(blob), img = new Image();
+    try { img.src = url; await img.decode(); try { return await createImageBitmap(img); } catch (_) { return img; } }
+    finally { URL.revokeObjectURL(url); }
+  };
+  // The frames to have ready: the one on screen, a run ahead in the direction of travel (spread out
+  // when the camera still has a long way to go), and a few behind in case the visitor turns back.
+  function wanted(){
+    const cur = idx(shown), aim = idx(target);
+    if (aim !== cur) dir = aim > cur ? 1 : -1;
+    const gap = Math.abs(aim - cur), step = gap > AHEAD ? gap / AHEAD : 1, list = [cur];
+    for (let k = 1; k <= AHEAD; k++) {
+      list.push(cur + dir * Math.round(k * step));
+      if (k % 2 === 0 && k / 2 <= BEHIND) list.push(cur - dir * (k / 2));
+    }
+    return list.filter((i, j) => i >= 0 && i < F.count && list.indexOf(i) === j);
+  }
+  function decodeAround(){
+    if (!useFrames || !canBitmap) return;
+    const list = wanted();
+    for (const i of list) {
+      if (busy.size >= DECODERS) break;
+      if (bmps.has(i) || busy.has(i) || !blobs[i]) continue;
+      busy.add(i);
+      decode(blobs[i]).then(b => {
+        busy.delete(i); bmps.set(i, b);
+        // let go of the decoded frames furthest from the camera (the canvas keeps what it has drawn)
+        if (bmps.size > CAP) {
+          const cur = idx(shown), keep = new Set(list);
+          [...bmps.keys()].filter(k => !keep.has(k) && k !== lastDrawn).sort((a, b) => Math.abs(b - cur) - Math.abs(a - cur))
+            .slice(0, bmps.size - CAP).forEach(k => { const x = bmps.get(k); if (x.close) x.close(); bmps.delete(k); });
+        }
+        if (Math.abs(i - idx(shown)) <= 2 || Math.abs(i - idx(shown)) < Math.abs(lastDrawn - idx(shown)) || lastDrawn < 0) render(shown);
+        decodeAround();
+      }, () => { busy.delete(i); blobs[i] = null; decodeAround(); });
+    }
   }
   // the stage's own size (100lvh), so phone address bars sliding in and out don't resize anything
   let VW = innerWidth, VH = innerHeight, DPR = 1, big = false;
@@ -102,22 +158,41 @@ const TOUR = {
     VW = r.width || innerWidth; VH = r.height || innerHeight;
     let dpr = Math.min(devicePixelRatio || 1, useShots ? 3 : 2);
     if (useShots) dpr = Math.min(dpr, Math.sqrt(16e6 / (VW * VH)));   // keep huge screens to about 16 megapixels
+    // no more canvas pixels than the frames have: drawing them any bigger costs time and adds no detail
+    const fw = useFrames && (strip ? strip.w : F.w), fh = useFrames && (strip ? strip.h : F.h);
+    if (fw && fh) dpr = clamp(1 / Math.max(VW / fw, VH / fh), .5, dpr);
     const w = Math.round(VW * dpr), h = Math.round(VH * dpr);
-    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; lastDrawn = -1; }
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; lastDrawn = -1; drawnKey = ""; }
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
     DPR = dpr; big = Math.max(w, h * 16 / 9) * 1.3 > 2100;      // big or high-density screen
   }
-  function drawFrame(p){
-    const want = Math.round(p * (F.count - 1));
-    let i = -1;
-    for (let d = 0; d < F.count; d++) { if (frames[want - d]) { i = want - d; break; } if (frames[want + d]) { i = want + d; break; } }
-    const img = frames[i]; if (!img || i === lastDrawn) return;
-    const cw = canvas.width, ch = canvas.height, iw = img.naturalWidth, ih = img.naturalHeight;
+  // Each frame lasts about 20 px of scrolling, so between two frames the next one is blended in by how
+  // far along the visitor is: the picture moves on every screen refresh instead of stepping 15 times a second.
+  let drawnKey = "";
+  function place(img){
+    const cw = canvas.width, ch = canvas.height, iw = img.width || img.naturalWidth, ih = img.height || img.naturalHeight;
     const r = strip ? strip.rect : [0, 0, 1, 1];
     const fw = iw / (r[2] - r[0]), fh = ih / (r[3] - r[1]);     // size of the whole frame this file is part of
     let s = Math.max(cw / fw, ch / fh), x = (cw - fw * s) / 2 + r[0] * fw * s, y = (ch - fh * s) / 2 + r[1] * fh * s;
     if (iw * s < cw || ih * s < ch) { s = Math.max(cw / iw, ch / ih); x = (cw - iw * s) / 2; y = (ch - ih * s) / 2; }  // turned sideways
-    ctx.drawImage(img, x, y, iw * s, ih * s); lastDrawn = i;
+    return [x, y, iw * s, ih * s];
+  }
+  function drawFrame(p){
+    const at = clamp(p) * (F.count - 1), i0 = Math.floor(at), mix = Math.round((at - i0) * 24) / 24;
+    const has = canBitmap ? i => bmps.has(i) : i => !!blobs[i], get = i => canBitmap ? bmps.get(i) : blobs[i];
+    let key, a = -1, b = -1;
+    if (has(i0) && (mix === 0 || has(i0 + 1))) { a = i0; b = mix > 0 ? i0 + 1 : -1; key = i0 + ":" + mix; }
+    else {                                                     // not decoded yet: the nearest frame that is
+      const want = Math.round(at);
+      for (let d = 0; d < F.count; d++) { if (has(want - d)) { a = want - d; break; } if (has(want + d)) { a = want + d; break; } }
+      if (a < 0) return;
+      key = a + ":0";
+    }
+    if (key === drawnKey) return;
+    const A = get(a), [x, y, w, h] = place(A);
+    ctx.globalAlpha = 1; ctx.drawImage(A, x, y, w, h);
+    if (b >= 0) { const B = get(b); ctx.globalAlpha = mix; ctx.drawImage(B, ...place(B)); ctx.globalAlpha = 1; }
+    drawnKey = key; lastDrawn = mix >= .5 && b >= 0 ? b : a;
   }
 
   /* ---------- 2. whole-file video ---------- */
@@ -144,7 +219,7 @@ const TOUR = {
   //                 8K AI upscale). Phones and tall screens only ever see that middle strip, and desktops
   //                 see it once the camera pushes in, so it is drawn whenever it covers the whole screen.
   const VARIANTS = [{key: "hd", suffix: "@hd", rect: [.25, 0, .75, 1]}, {key: "hi", suffix: "@2x", rect: [0, 0, 1, 1]}];
-  const FULL = [0, 0, 1, 1], canBitmap = "createImageBitmap" in window;
+  const FULL = [0, 0, 1, 1];
   let loLeft = TOUR.shots.length;
   const toBitmap = async src => {
     const img = new Image(); img.decoding = "async";
@@ -302,25 +377,47 @@ const TOUR = {
   }
 
   const last = document.querySelector(".panel.last");
-  function fit(){ journey.style.marginBottom = Math.max(0, last.offsetTop + last.offsetHeight - journey.offsetHeight) + "px"; }
+  // page geometry, read once per resize so scrolling never forces the browser to lay the page out again
+  let G = {top: 0, h: 1, range: 1, lastTop: 0};
+  function fit(){
+    journey.style.marginBottom = Math.max(0, last.offsetTop + last.offsetHeight - journey.offsetHeight) + "px";
+    const top = journey.getBoundingClientRect().top + scrollY;
+    G = {top, h: journey.offsetHeight, range: Math.max(1, journey.offsetHeight - innerHeight),
+         lastTop: last.getBoundingClientRect().top + scrollY};
+  }
+  let atTop = null, hudOff = null;
   function measure(){
-    const r = journey.getBoundingClientRect(), range = journey.offsetHeight - innerHeight;
-    target = clamp(-r.top / range);
-    document.body.classList.toggle("at-top", target < .03);
-    document.body.classList.toggle("hud-off", r.bottom < innerHeight * .6 ||
-      (innerWidth <= 860 && last.getBoundingClientRect().top < innerHeight * .3));   // the tall contact form on phones
+    const y = scrollY - G.top;
+    target = clamp(y / G.range);
+    const t = target < .03, h = G.h - y < innerHeight * .6 ||
+      (innerWidth <= 860 && G.lastTop - scrollY < innerHeight * .3);   // the tall contact form on phones
+    if (t !== atTop) document.body.classList.toggle("at-top", atTop = t);
+    if (h !== hudOff) document.body.classList.toggle("hud-off", hudOff = h);
   }
-  let raf = 0;
-  function tick(){
-    shown += (target - shown) * (reduce ? 1 : .1);              // a little inertia, like a steady camera
-    if (Math.abs(target - shown) < .0001) shown = target;
+  // A little inertia, like a steady camera: the picture glides to where the page is, at the same pace
+  // on 60 Hz and 120 Hz screens. TAU is how quickly it catches up (in ms).
+  const TAU = 110;
+  // When the visitor stops, the picture settles on the nearest whole frame (never more than about 10 px
+  // of scrolling away), so what stays on screen is always one crisp frame, not a blend of two.
+  const SETTLE = 150;
+  let raf = 0, before = 0, lastScroll = 0;
+  function tick(now){
+    const dt = before ? Math.min(64, now - before) : 16.7; before = now;
+    const moving = now - lastScroll < SETTLE, N1 = useFrames ? F.count - 1 : 0;
+    const goal = useFrames && !moving ? Math.round(target * N1) / N1 : target;
+    shown += (goal - shown) * (reduce ? 1 : 1 - Math.exp(-dt / TAU));
+    if (Math.abs(goal - shown) < .00005) shown = goal;
     render(shown);
-    raf = shown !== target ? requestAnimationFrame(tick) : 0;
+    if (useFrames) decodeAround();
+    if (shown !== goal || (useFrames && moving)) raf = requestAnimationFrame(tick); else { raf = 0; before = 0; }
   }
-  function kick(){ measure(); if (!raf) raf = requestAnimationFrame(tick); }
+  function kick(){ lastScroll = performance.now(); measure(); if (!raf) raf = requestAnimationFrame(tick); }
   addEventListener("scroll", kick, {passive: true});
   addEventListener("resize", () => { sizeCanvas(); layout(); fit(); measure(); render(shown); });
-  sizeCanvas(); layout(); fit(); measure(); shown = target; render(shown);
+  // the page can grow after load (fonts, images below the tour), which moves nothing above it, but
+  // re-measure anyway so the numbers stay right
+  if ("ResizeObserver" in window) new ResizeObserver(() => { fit(); measure(); }).observe(journey);
+  sizeCanvas(); layout(); fit(); measure(); shown = useFrames ? Math.round(target * (F.count - 1)) / (F.count - 1) : target; render(shown);
 
   rooms.forEach(li => li.addEventListener("click", () => {
     const range = journey.offsetHeight - innerHeight;
