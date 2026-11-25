@@ -1,4 +1,4 @@
-/* Client book (/crm/). Same warm palette as the site, always light: Gentian prefers the brown look, so it no longer follows the device's dark mode. */
+/* Client book (/crm/). Same warm palette as the site, with a dark mode. */
 /* Layout: app shell. Top bar + tabs (bottom tab bar on phones), one view at a time, contact opens in a side sheet. */
 :root{
   --bg:#f6f2ec; --surface:#fbf9f6; --surface-2:#efe9e0; --ink:#1f1b17; --muted:#6e665d; --line:rgba(31,27,23,.12);
@@ -7,8 +7,17 @@
   --shadow:0 24px 50px -30px rgba(40,28,16,.45);
   --font:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --ease:cubic-bezier(.22,.7,.2,1);
-  color-scheme:light;
 }
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#17130f; --surface:#211b16; --surface-2:#2b241d; --ink:#f1ebe3; --muted:#a89d90; --line:rgba(241,235,227,.13);
+  --accent:#d3ad80; --accent-strong:#e2c29c; --accent-ink:#1b150f; --accent-soft:#3a2f23;
+  --due:#e88b6c; --due-soft:#3d2219; --ok:#a9c48f; --ok-soft:#263020; --info:#9fbcd1; --info-soft:#1f2b33;
+  --shadow:0 24px 50px -30px rgba(0,0,0,.8); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17130f; --surface:#211b16; --surface-2:#2b241d; --ink:#f1ebe3; --muted:#a89d90; --line:rgba(241,235,227,.13);
+  --accent:#d3ad80; --accent-strong:#e2c29c; --accent-ink:#1b150f; --accent-soft:#3a2f23;
+  --due:#e88b6c; --due-soft:#3d2219; --ok:#a9c48f; --ok-soft:#263020; --info:#9fbcd1; --info-soft:#1f2b33;
+  --shadow:0 24px 50px -30px rgba(0,0,0,.8); color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--font);letter-spacing:-.011em;-webkit-font-smoothing:antialiased;
