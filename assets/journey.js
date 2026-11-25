@@ -14,7 +14,8 @@
       photo at the centre of the screen (0..1), zoom 1 = photo just covers the screen.
    ─────────────────────────────────────────────────────────────────────────────────────────── */
 const TOUR = {
-  frames: {dir: "/assets/tour/frames/", count: 0, ext: "webp", digits: 4},
+  frames: {dir: "/assets/tour/frames/", count: 529, ext: "webp", digits: 4,
+           strip: {dir: "/assets/tour/frames-hd/", rect: [.25, 0, .75, 1]}},
   video: "",
   // One house, eight AI-generated shots made to match (Canva). The camera keeps moving through each
   // hand-off. Pairs marked seamlessOut/seamlessIn share one camera position, so the front door and the
@@ -67,9 +68,13 @@ const TOUR = {
   const canvas = $("tour-canvas"), ctx = canvas && canvas.getContext("2d", {alpha: false}), loader = $("tour-loader");
   const frames = [];
   let loaded = 0, lastDrawn = -1;
+  // Portrait screens (phones, tablets held upright) only ever see the middle of a 16:9 frame, so they
+  // load the close-up set: the middle strip at the video's full height, sharper than a scaled-down frame.
+  const strip = useFrames && F.strip && innerWidth / innerHeight < .89 ? F.strip : null;
   if (useFrames) {
     shotsEl.hidden = true; canvas.hidden = false; if (loader) loader.hidden = false;
-    const name = i => F.dir + String(i + 1).padStart(F.digits, "0") + "." + F.ext;
+    const dir = strip ? strip.dir : F.dir;
+    const name = i => dir + String(i + 1).padStart(F.digits, "0") + "." + F.ext + (F.v ? "?v=" + F.v : "");
     const order = [], seen = new Set();                        // coarse pass first, then fill the gaps
     for (const step of [16, 4, 1]) for (let i = 0; i < F.count; i += step) if (!seen.has(i)) { seen.add(i); order.push(i); }
     let next = 0;
@@ -107,9 +112,12 @@ const TOUR = {
     let i = -1;
     for (let d = 0; d < F.count; d++) { if (frames[want - d]) { i = want - d; break; } if (frames[want + d]) { i = want + d; break; } }
     const img = frames[i]; if (!img || i === lastDrawn) return;
-    const cw = canvas.width, ch = canvas.height, s = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
-    const w = img.naturalWidth * s, h = img.naturalHeight * s;
-    ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h); lastDrawn = i;
+    const cw = canvas.width, ch = canvas.height, iw = img.naturalWidth, ih = img.naturalHeight;
+    const r = strip ? strip.rect : [0, 0, 1, 1];
+    const fw = iw / (r[2] - r[0]), fh = ih / (r[3] - r[1]);     // size of the whole frame this file is part of
+    let s = Math.max(cw / fw, ch / fh), x = (cw - fw * s) / 2 + r[0] * fw * s, y = (ch - fh * s) / 2 + r[1] * fh * s;
+    if (iw * s < cw || ih * s < ch) { s = Math.max(cw / iw, ch / ih); x = (cw - iw * s) / 2; y = (ch - ih * s) / 2; }  // turned sideways
+    ctx.drawImage(img, x, y, iw * s, ih * s); lastDrawn = i;
   }
 
   /* ---------- 2. whole-file video ---------- */
