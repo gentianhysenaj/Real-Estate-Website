@@ -410,6 +410,45 @@ function fmtAddress(p) {
   const tail = [PROV[p.state] || p.state, p.postcode].filter(Boolean).join(" ");
   return [street, place, tail].filter(Boolean).join(", ");
 }
+// Google Places (New) through the Maps JavaScript API, used when a key is saved in ⋯ > Connections.
+let gLoad = null, gFailed = false;
+const gKey = () => (db && db.settings && db.settings.gkey) || "";
+function loadGoogle(key) {
+  if (gLoad) return gLoad;
+  gLoad = new Promise((res, rej) => {
+    window.__gmapsReady = () => res();
+    const sc = document.createElement("script");
+    sc.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(key) + "&v=weekly&loading=async&libraries=places&callback=__gmapsReady";
+    sc.async = true; sc.onerror = () => { gLoad = null; rej(new Error("load")); };
+    document.head.appendChild(sc);
+  });
+  return gLoad;
+}
+window.gm_authFailure = () => { gFailed = true; toast("Google turned down the address key. Check it in ⋯ > Connections."); };
+async function googleSuggest(q, ctx) {
+  await loadGoogle(gKey());
+  const lib = await google.maps.importLibrary("places");
+  if (!ctx.token) ctx.token = new lib.AutocompleteSessionToken();
+  const { suggestions } = await lib.AutocompleteSuggestion.fetchAutocompleteSuggestions({ input: q, sessionToken: ctx.token, includedRegionCodes: ["ca"], locationBias: { lat: 43.70, lng: -79.42 }, language: "en" });
+  return (suggestions || []).filter(x => x.placePrediction).slice(0, 5).map(x => { const pp = x.placePrediction;
+    return { main: pp.mainText ? pp.mainText.toString() : pp.text.toString(), sub: pp.secondaryText ? pp.secondaryText.toString().replace(/, Canada$/, "") : "", full: pp.text.toString().replace(/, Canada$/, ""), pred: pp }; });
+}
+async function googleDetails(it) {
+  const place = it.pred.toPlace();
+  await place.fetchFields({ fields: ["formattedAddress", "addressComponents"] });
+  const comps = place.addressComponents || [];
+  const get = t => { const c = comps.find(x => (x.types || []).includes(t)); return c ? (c.longText || c.long_name || "") : ""; };
+  return { full: (place.formattedAddress || it.full).replace(/, Canada$/, ""), p: { district: get("neighborhood") || get("sublocality_level_1") || get("sublocality") || get("locality") } };
+}
+async function photonSuggest(q, signal) {
+  const url = "https://photon.komoot.io/api/?limit=6&lang=en&lat=43.70&lon=-79.42&bbox=-95.2,41.6,-74.3,56.9&q=" + encodeURIComponent(q);
+  const j = await (await fetch(url, { signal })).json();
+  const seen = new Set();
+  return (j.features || []).map(f => f.properties || {}).filter(p => p.countrycode === "CA" && (p.street || p.name)).map(p => {
+    const full = fmtAddress(p); const main = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name;
+    return { p, full, main, sub: full.slice(main.length).replace(/^,\s*/, "") };
+  }).filter(it => !seen.has(it.full) && seen.add(it.full)).slice(0, 5);
+}
 function attachAddress(input, onPick) {
   if (!input) return;
   const wrap = input.parentElement; wrap.classList.add("addr-wrap");
@@ -427,7 +466,10 @@ function attachAddress(input, onPick) {
     box.style.top = (input.offsetTop + input.offsetHeight + 4) + "px";
     box.hidden = !items.length;
   };
-  const pick = i => { const it = items[i]; if (!it) return; picking = true; if (onPick) onPick(it.p); input.value = it.full; close(); setLink(); input.dispatchEvent(new Event("change", { bubbles: true })); picking = false; };
+  const gctx = {};
+  const pick = async i => { let it = items[i]; if (!it) return; close();
+    if (it.pred) { try { const d = await googleDetails(it); it = { ...it, full: d.full, p: d.p }; } catch (e) {} gctx.token = null; }
+    picking = true; if (onPick && it.p) onPick(it.p); input.value = it.full; setLink(); input.dispatchEvent(new Event("change", { bubbles: true })); picking = false; };
   box.addEventListener("mousedown", e => { const b = e.target.closest("button"); if (b) { e.preventDefault(); pick(+b.dataset.i); } });
   input.addEventListener("input", () => {
     setLink(); clearTimeout(timer);
@@ -435,13 +477,11 @@ function attachAddress(input, onPick) {
     timer = setTimeout(async () => {
       try {
         if (ctrl) ctrl.abort(); ctrl = new AbortController();
-        const url = "https://photon.komoot.io/api/?limit=6&lang=en&lat=43.70&lon=-79.42&bbox=-95.2,41.6,-74.3,56.9&q=" + encodeURIComponent(q);
-        const r = await fetch(url, { signal: ctrl.signal }); const j = await r.json();
-        const seen = new Set();
-        items = (j.features || []).map(f => f.properties || {}).filter(p => p.countrycode === "CA" && (p.street || p.name)).map(p => {
-          const full = fmtAddress(p); const main = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name;
-          return { p, full, main, sub: full.slice(main.length).replace(/^,\s*/, "") };
-        }).filter(it => !seen.has(it.full) && seen.add(it.full)).slice(0, 5);
+        let got = null;
+        if (gKey() && !gFailed) { try { got = await googleSuggest(q, gctx); } catch (e) { got = null; } }
+        if (!got) got = await photonSuggest(q, ctrl.signal);
+        if (input.value.trim() !== q) return;
+        items = got;
         active = -1; draw();
       } catch (e) { if (e.name !== "AbortError") { items = []; close(); } }
     }, 250);
@@ -596,6 +636,18 @@ async function openConnections() {
   const script = gmailScript(base, key);
   const m = db.mail, autoMeta = db.meta.filter(x => x.auto).length;
   sheet.innerHTML = `<div class="sheet-h"><h2>Connections</h2><button class="x" aria-label="Close">×</button></div>
+  <div class="card box"><div class="inbox-h"><span class="dot" ${dot(gKey())}></span><h3>Google address search</h3><span class="meta">${gKey() ? "On" : "Using OpenStreetMap"}</span></div>
+    <p class="muted" style="font-size:14px">Address suggestions come from Google instead of OpenStreetMap. You need a key from Google Cloud. It's free for your use, but Google asks for a card when you set it up.</p>
+    <ol class="steps">
+      <li>Open <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud</a>, sign in, name the project <b>Client book</b> and click <b>Create</b>.</li>
+      <li>Open <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener">Billing</a> and link a billing account (card) to the project.</li>
+      <li>Turn on <a href="https://console.cloud.google.com/apis/library/maps-backend.googleapis.com" target="_blank" rel="noopener">Maps JavaScript API</a> and <a href="https://console.cloud.google.com/apis/library/places.googleapis.com" target="_blank" rel="noopener">Places API (New)</a>: open each and click <b>Enable</b>.</li>
+      <li>Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Credentials</a>, click <b>Create credentials</b>, then <b>API key</b>.</li>
+      <li>Click the new key to edit it. Under <b>Application restrictions</b> pick <b>Websites</b> and add <b>https://gentianhysenaj.com/*</b>. Under <b>API restrictions</b> pick <b>Restrict key</b> and tick the two APIs above. Click <b>Save</b>.</li>
+      <li>Copy the key (it starts with AIza), paste it below and click <b>Save</b>.</li>
+    </ol>
+    <div class="field"><label for="gkeyIn">Google key</label><div class="inline-add"><input id="gkeyIn" value="${esc(gKey())}" placeholder="AIza…" autocomplete="off"><button class="btn primary" id="gkeySave">Save</button></div></div>
+  </div>
   <div class="card box"><div class="inbox-h"><span class="dot" ${m && m.last ? "" : 'style="background:var(--muted);box-shadow:0 0 0 4px var(--surface-2)"'}></span><h3>Gmail check, lead alerts, morning summary</h3>
     <span class="meta">${m && m.last ? "Last ran " + esc(new Date(m.last).toLocaleString("en-CA", { weekday: "short", hour: "numeric", minute: "2-digit" })) : "Not connected"}</span></div>
     <p class="muted" style="font-size:14px">One small script runs inside your own Google account and does these jobs. Nobody else gets access to your Gmail.</p>
@@ -643,6 +695,9 @@ async function openConnections() {
     <div class="field"><label>Webhook URL</label><div class="inline-add"><input readonly value="${esc(base)}/google-lead" id="cpGUrl"><button class="btn" data-copy="cpGUrl">Copy</button></div></div>
     <div class="field"><label>Key</label><div class="inline-add"><input readonly value="${esc(key)}" id="cpGKey"><button class="btn" data-copy="cpGKey">Copy</button></div></div>
   </div>`;
+  sheet.querySelector("#gkeySave").onclick = () => { const v = sheet.querySelector("#gkeyIn").value.trim();
+    if (v && !/^AIza[\w-]{30,}$/.test(v)) { toast("That doesn't look like a Google key. It starts with AIza."); return; }
+    db.settings = db.settings || {}; db.settings.gkey = v; gFailed = false; save(); toast(v ? "Google address search is on" : "Back to OpenStreetMap"); openConnections(); };
   sheet.querySelector(".x").onclick = () => closeSheet();
   const copy = async (text, label) => { try { await navigator.clipboard.writeText(text); toast(label === "Copied" ? "Copied" : label + " copied"); } catch (e) { toast("Select it and copy by hand"); } };
   sheet.querySelector("#cpScript").onclick = () => copy(script, "Script");
