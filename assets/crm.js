@@ -399,6 +399,65 @@ const commission = d => d.commAmt ? d.commAmt : d.commPct ? Math.round(dealValue
 function toast(m) { const t = $id("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), 2200); }
 const opt = (list, cur) => list.map(s => `<option${s === cur ? " selected" : ""}>${esc(s)}</option>`).join("");
 
+/* ---------- address suggestions ----------
+   As you type an address, suggestions come from OpenStreetMap through Photon (free, no key), leaning to the GTA.
+   Picking one fills the field (and the neighbourhood on deals). A Google Maps link sits under each address. */
+const PROV = { Ontario: "ON", Quebec: "QC", "British Columbia": "BC", Alberta: "AB", Manitoba: "MB", Saskatchewan: "SK", "Nova Scotia": "NS", "New Brunswick": "NB", "Newfoundland and Labrador": "NL", "Prince Edward Island": "PE" };
+const mapsLink = a => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(a);
+function fmtAddress(p) {
+  const street = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name || "";
+  const place = p.city || p.town || p.village || p.locality || p.county || "";
+  const tail = [PROV[p.state] || p.state, p.postcode].filter(Boolean).join(" ");
+  return [street, place, tail].filter(Boolean).join(", ");
+}
+function attachAddress(input, onPick) {
+  if (!input) return;
+  const wrap = input.parentElement; wrap.classList.add("addr-wrap");
+  const box = document.createElement("div"); box.className = "addr-list"; box.hidden = true; box.setAttribute("role", "listbox");
+  wrap.appendChild(box);
+  const link = document.createElement("a"); link.className = "maps-link"; link.target = "_blank"; link.rel = "noopener"; link.textContent = "Open in Google Maps";
+  wrap.appendChild(link);
+  const setLink = () => { link.hidden = !input.value.trim(); link.href = mapsLink(input.value.trim()); };
+  setLink();
+  let timer = null, items = [], active = -1, ctrl = null, picking = false;
+  input.setAttribute("autocomplete", "off");
+  const close = () => { box.hidden = true; active = -1; };
+  const draw = () => {
+    box.innerHTML = items.map((it, i) => `<button type="button" role="option" class="${i === active ? "on" : ""}" data-i="${i}"><b>${esc(it.main)}</b><small>${esc(it.sub)}</small></button>`).join("");
+    box.style.top = (input.offsetTop + input.offsetHeight + 4) + "px";
+    box.hidden = !items.length;
+  };
+  const pick = i => { const it = items[i]; if (!it) return; picking = true; if (onPick) onPick(it.p); input.value = it.full; close(); setLink(); input.dispatchEvent(new Event("change", { bubbles: true })); picking = false; };
+  box.addEventListener("mousedown", e => { const b = e.target.closest("button"); if (b) { e.preventDefault(); pick(+b.dataset.i); } });
+  input.addEventListener("input", () => {
+    setLink(); clearTimeout(timer);
+    const q = input.value.trim(); if (q.length < 4) { items = []; close(); return; }
+    timer = setTimeout(async () => {
+      try {
+        if (ctrl) ctrl.abort(); ctrl = new AbortController();
+        const url = "https://photon.komoot.io/api/?limit=6&lang=en&lat=43.70&lon=-79.42&bbox=-95.2,41.6,-74.3,56.9&q=" + encodeURIComponent(q);
+        const r = await fetch(url, { signal: ctrl.signal }); const j = await r.json();
+        const seen = new Set();
+        items = (j.features || []).map(f => f.properties || {}).filter(p => p.countrycode === "CA" && (p.street || p.name)).map(p => {
+          const full = fmtAddress(p); const main = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name;
+          return { p, full, main, sub: full.slice(main.length).replace(/^,\s*/, "") };
+        }).filter(it => !seen.has(it.full) && seen.add(it.full)).slice(0, 5);
+        active = -1; draw();
+      } catch (e) { if (e.name !== "AbortError") { items = []; close(); } }
+    }, 250);
+  });
+  input.addEventListener("keydown", e => {
+    if (box.hidden) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); active = (active + 1) % items.length; draw(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); active = (active - 1 + items.length) % items.length; draw(); }
+    else if (e.key === "Enter" && active >= 0) { e.preventDefault(); pick(active); }
+    else if (e.key === "Escape") { e.stopPropagation(); close(); }
+  });
+  input.addEventListener("blur", () => setTimeout(close, 150));
+  input.addEventListener("change", e => { if (!picking) setLink(); });
+}
+const areaOf = p => p.district || p.locality || p.suburb || p.city || "";
+
 /* ---------- views ---------- */
 function show(v) {
   view = v;
@@ -1056,7 +1115,7 @@ function drawContact() {
   const $ = s => sheet.querySelector(s);
   $(".x").onclick = () => closeSheet();
   const bind = (sel, key, fn) => { const el = $(sel); if (el) el.onchange = e => { c[key] = fn ? fn(e.target.value) : e.target.value.trim(); save(); if (["first", "last", "type", "source"].includes(key)) drawContact(); }; };
-  bind("#e-first", "first"); bind("#e-last", "last"); bind("#e-phone", "phone"); bind("#e-email", "email"); bind("#e-src", "source"); bind("#e-type", "type"); bind("#e-addr", "addr"); bind("#e-bday", "bday"); bind("#e-anniv", "anniv"); bind("#e-annivl", "annivLabel");
+  bind("#e-first", "first"); bind("#e-last", "last"); bind("#e-phone", "phone"); bind("#e-email", "email"); bind("#e-src", "source"); bind("#e-type", "type"); bind("#e-addr", "addr"); attachAddress($("#e-addr")); bind("#e-bday", "bday"); bind("#e-anniv", "anniv"); bind("#e-annivl", "annivLabel");
   const sp = $("[data-startplan]"); if (sp) sp.onclick = () => { const v = $("#s-plan").value; if (!v) { toast("Pick a plan first"); return; } startPlan(c, v); save(); drawContact(); toast(v + " plan started"); };
   const xp = $("[data-stopplan]"); if (xp) xp.onclick = () => { addLog(c, "note", "Stopped follow-up plan: " + c.plan.name); c.plan = null; save(); drawContact(); };
   $("#s-stage").onchange = e => { addLog(c, "note", "Moved from " + c.stage + " to " + e.target.value); c.stage = e.target.value; save(); drawContact(); toast("Moved to " + c.stage); };
@@ -1217,7 +1276,8 @@ function drawDeal(id) {
     if (key === "side" && PAPER[d.kind]) { d.rep = defaultRep(d); syncPaperwork(d); }
     if (["mls", "lawyer", "lawyer2"].includes(key)) autoTick(d);
     save(); if (redraw.has(key)) drawDeal(id); else if (fn === num) e.target.value = d[key] ? money(d[key]) : ""; }; };
-  bind("#d-addr", "addr"); bind("#d-area", "area"); bind("#d-mls", "mls"); bind("#d-client", "client", v => v || null); bind("#d-side", "side");
+  bind("#d-addr", "addr"); bind("#d-area", "area");
+  attachAddress($("#d-addr"), p => { if (!d.area && areaOf(p)) d.area = areaOf(p); }); bind("#d-mls", "mls"); bind("#d-client", "client", v => v || null); bind("#d-side", "side");
   bind("#d-st", "status"); bind("#d-list", "list", num); bind("#d-pr", "price", num); bind("#d-dep", "dep", num);
   bind("#d-offer", "offer", v => v || null); bind("#d-cond", "cond", v => v || null); bind("#d-close", "close", v => v || null); bind("#d-live", "live", v => v || null);
   bind("#d-otherag", "otherAgent"); bind("#d-lawyer", "lawyer"); if ($("#d-lawyer2")) bind("#d-lawyer2", "lawyer2");
@@ -1272,6 +1332,7 @@ function newDeal(clientId) {
   <div><button class="btn primary" type="submit">Add deal</button></div></form>`;
   openPanel();
   sheet.querySelector(".x").onclick = () => closeSheet();
+  attachAddress(sheet.querySelector("#nd-addr"), p => { const a = sheet.querySelector("#nd-area"); if (a && !a.value.trim()) a.value = areaOf(p); });
   sheet.querySelector("#ndF").onsubmit = e => { e.preventDefault(); const v = s => sheet.querySelector(s).value.trim(); const side = v("#nd-side");
     const d = { id: uid(), client: v("#nd-client") || null, side, addr: v("#nd-addr"), area: v("#nd-area"), status: v("#nd-st"), price: 0, list: num(v("#nd-list")), offer: v("#nd-st") === "Offer in" ? rel(0) : null, cond: null, close: null,
       kind: v("#nd-kind"), docs: (/lease/.test(v("#nd-kind")) ? LEASE_STEPS : side === "Buyer" ? BUY_STEPS : SELL_STEPS).map(x => ({ d: x, done: false })), ups: [], created: nowISO() };

@@ -322,3 +322,13 @@ table.rep td:last-child,table.rep th:last-child{text-align:right;padding-right:0
 .movesel{padding:5px 8px;max-width:140px}
 .prow .side{flex-wrap:wrap;justify-content:flex-end}
 @media (max-width:560px){.movesel{max-width:110px}}
+
+/* address suggestions */
+.addr-wrap{position:relative}
+.addr-list{position:absolute;left:0;right:0;top:100%;z-index:40;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:4px;display:grid;max-height:280px;overflow:auto}
+.addr-list button{all:unset;cursor:pointer;display:grid;gap:1px;padding:8px 10px;border-radius:8px}
+.addr-list button b{font-weight:600;font-size:14px}
+.addr-list button small{color:var(--muted);font-size:12px}
+.addr-list button:hover,.addr-list button.on{background:var(--surface-2)}
+.maps-link{font-size:12px;font-weight:600;color:var(--accent-strong);text-decoration:none;justify-self:start}
+.maps-link:hover{text-decoration:underline}
