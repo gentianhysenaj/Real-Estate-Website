@@ -18,6 +18,9 @@ const TOUR = {
   frames: {dir: "/assets/tour/frames/", count: 529, ext: "webp", digits: 4, w: 1600, h: 900,
            strip: {dir: "/assets/tour/frames-hd/", rect: [.25, 0, .75, 1], w: 1920, h: 1080}},
   video: "",
+  // Scroll stops: one flick of the wheel, one swipe or one arrow key glides the tour to the next stop.
+  // Each stop is where an info panel sits (its --at), plus the back doors opening onto the garden.
+  stops: [0, .14, .31, .48, .66, 1],
   // One house, eight AI-generated shots made to match (Canva). The camera keeps moving through each
   // hand-off. Pairs marked seamlessOut/seamlessIn share one camera position, so the front door and the
   // back doors appear to swing open in place as you scroll.
@@ -419,8 +422,84 @@ const TOUR = {
   if ("ResizeObserver" in window) new ResizeObserver(() => { fit(); measure(); }).observe(journey);
   sizeCanvas(); layout(); fit(); measure(); shown = useFrames ? Math.round(target * (F.count - 1)) / (F.count - 1) : target; render(shown);
 
+  /* ---------- scroll stops (gentle scroll-jacking) ---------- */
+  // Inside the tour, the page doesn't scroll freely: each gesture glides to the next stop, so the whole
+  // walk-through takes a handful of flicks. Past the last stop the page scrolls normally again.
+  const STOPS = TOUR.stops || [];
+  let glide = null, lastWheel = 0, gateOpen = true;
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const posNow = () => (scrollY - G.top) / G.range;
+  function glideTo(at){
+    const from = scrollY, to = G.top + clamp(at) * G.range, dist = Math.abs(to - from) / G.range;
+    if (Math.abs(to - from) < 2) return;
+    const dur = Math.min(1900, 900 + 2000 * dist), t0 = performance.now();
+    gateOpen = false;
+    if (glide) cancelAnimationFrame(glide.raf);
+    glide = {raf: 0};
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur);
+      scrollTo(0, Math.round(from + (to - from) * ease(k)));
+      if (k < 1) glide.raf = requestAnimationFrame(step); else glide = null;
+    };
+    glide.raf = requestAnimationFrame(step);
+  }
+  // the stop to go to from here, or null when the page should scroll normally
+  function nextStop(dir){
+    const p = posNow();
+    if (p < -.001 || p > 1.001) return null;                  // above or below the tour
+    if (dir > 0) { const n = STOPS.find(a => a > p + .01); return n === undefined ? null : n; }
+    for (let i = STOPS.length - 1; i >= 0; i--) if (STOPS[i] < p - .01) return STOPS[i];
+    return null;
+  }
+  function wants(dir){                                        // true when this gesture is ours
+    if (reduce || !STOPS.length) return false;
+    if (glide) return true;                                   // mid-glide: ignore extra input
+    const n = nextStop(dir);
+    if (n === null) return false;
+    return true;
+  }
+  if (!reduce && STOPS.length) {
+    // Wheel and trackpad. A trackpad keeps sending a tail of events after a flick, so a new step only
+    // starts once the events have paused for a moment after the last glide.
+    addEventListener("wheel", e => {
+      if (e.ctrlKey || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;   // pinch-zoom, sideways
+      const now = performance.now(), gap = now - lastWheel, dir = Math.sign(e.deltaY);
+      lastWheel = now;
+      if (!dir) return;
+      if (!glide && gap > 160) gateOpen = true;
+      const n = nextStop(dir);
+      if (glide || (n !== null && !gateOpen)) { e.preventDefault(); return; }
+      if (n === null) {
+        if (!gateOpen && posNow() >= -.001 && posNow() <= 1.001) e.preventDefault();  // finish the tail first
+        return;
+      }
+      e.preventDefault(); glideTo(n);
+    }, {passive: false});
+    // Keys
+    addEventListener("keydown", e => {
+      if (e.target.closest && e.target.closest("input,textarea,select,[contenteditable]")) return;
+      const dir = {ArrowDown: 1, PageDown: 1, " ": e.shiftKey ? -1 : 1, ArrowUp: -1, PageUp: -1}[e.key];
+      if (!dir || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!wants(dir)) return;
+      e.preventDefault(); if (!glide) glideTo(nextStop(dir));
+    });
+    // Touch: a swipe glides to the next stop; at the last stop the page scrolls on as usual.
+    let ty = null, tdir = 0, owned = false;
+    addEventListener("touchstart", e => { if (e.touches.length === 1) { ty = e.touches[0].clientY; tdir = 0; owned = false; } }, {passive: true});
+    addEventListener("touchmove", e => {
+      if (ty === null || e.touches.length !== 1) return;
+      const dy = ty - e.touches[0].clientY;
+      if (!tdir && Math.abs(dy) > 6) { tdir = Math.sign(dy); owned = wants(tdir); }
+      if (owned) e.preventDefault();
+    }, {passive: false});
+    addEventListener("touchend", e => {
+      if (owned && !glide && tdir) { const n = nextStop(tdir); if (n !== null) glideTo(n); }
+      ty = null; owned = false;
+    }, {passive: true});
+  }
+
   rooms.forEach(li => li.addEventListener("click", () => {
-    const range = journey.offsetHeight - innerHeight;
-    scrollTo({top: journey.offsetTop + range * (+li.dataset.at + .02), behavior: reduce ? "auto" : "smooth"});
+    if (reduce) scrollTo({top: G.top + G.range * (+li.dataset.at + .02)});
+    else glideTo(+li.dataset.at + .02);
   }));
 })();
