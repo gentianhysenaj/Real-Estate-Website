@@ -6,7 +6,7 @@ header.top.fixed{position:fixed;inset:0 0 auto 0;z-index:20;border:0;padding-inl
   background:rgba(246,242,236,.7);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);
   border-bottom:1px solid rgba(31,27,23,.07)}
 
-.journey{position:relative;height:1300vh}
+.journey{position:relative;height:700vh}
 .stage{position:sticky;top:0;height:100vh;height:100lvh;overflow:hidden;background:#d9cfc1}
 
 /* the photos are drawn on the canvas by journey.js; garden lights sit on top, placed to match the camera */
@@ -45,7 +45,7 @@ header.top.fixed{position:fixed;inset:0 0 auto 0;z-index:20;border:0;padding-inl
 .hud-off .rooms{opacity:0;pointer-events:none}
 
 /* Panels */
-.panel{position:absolute;left:0;right:0;top:calc(var(--at) * 1200vh);min-height:100vh;display:flex;align-items:center;padding:110px var(--gutter) 72px;z-index:5;pointer-events:none}
+.panel{position:absolute;left:0;right:0;top:calc(var(--at) * 600vh);min-height:100vh;display:flex;align-items:center;padding:110px var(--gutter) 72px;z-index:5;pointer-events:none}
 .panel.right{justify-content:flex-end;padding-right:calc(var(--gutter) + 170px)}
 .panel .glass{pointer-events:auto;max-width:520px;width:100%;display:grid;gap:20px;padding:clamp(28px,3.2vw,46px);color:var(--ink);border-radius:30px;
   background:var(--glass);-webkit-backdrop-filter:var(--material);backdrop-filter:var(--material);
@@ -319,3 +319,5 @@ footer.site{color:var(--muted)}
   .rev-side{width:100%;justify-content:space-between}
   .closing p{font-size:clamp(32px,10vw,44px)}
 }
+/* Phones: the info panels are tall when stacked in one column, so they need a little more room */
+@media (max-width:600px){.journey{height:1000vh}.panel{top:calc(var(--at) * 900vh)}}
